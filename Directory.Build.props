@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <LangVersion>7.3</LangVersion>
+    <Deterministic>true</Deterministic>
+    <Version>0.1.0</Version>
+
+    <!-- CorelDRAW 2025 (v26). Override with -p:CorelDrawDir=... or the CORELDRAW_DIR environment variable. -->
+    <CorelDrawVersion>26</CorelDrawVersion>
+    <CorelDrawDir Condition="'$(CorelDrawDir)' == '' and '$(CORELDRAW_DIR)' != ''">$(CORELDRAW_DIR)</CorelDrawDir>
+    <CorelDrawDir Condition="'$(CorelDrawDir)' == ''">C:\Program Files\Corel\CorelDRAW Technical Suite\$(CorelDrawVersion)</CorelDrawDir>
+    <CorelDrawAssembliesDir>$(CorelDrawDir)\Programs64\Assemblies</CorelDrawAssembliesDir>
+  </PropertyGroup>
+</Project>
