@@ -119,6 +119,102 @@ namespace CorelDRAWTool.Core.Tests
             Assert.Equal(@"D:\output\示例.pdf", output);
         }
 
+        [Fact]
+        public void BuildsPaddedPngPathsForAllPages()
+        {
+            using (var workspace = new TempWorkspace())
+            {
+                workspace.CreateFile("a.cdr");
+
+                var plan = BatchExportPlanner.CreatePlan(workspace.Request(
+                    format: BatchExportFormat.Png,
+                    pageRange: BatchExportPageRange.AllPages));
+
+                var item = Assert.Single(plan.Items);
+                Assert.Equal("a-p01.png", Path.GetFileName(item.OutputPath));
+            }
+        }
+
+        [Fact]
+        public void BuildsPngPathForCurrentPage()
+        {
+            using (var workspace = new TempWorkspace())
+            {
+                workspace.CreateFile("a.cdr");
+
+                var plan = BatchExportPlanner.CreatePlan(workspace.Request(
+                    format: BatchExportFormat.Png,
+                    pageRange: BatchExportPageRange.CurrentPage));
+
+                var item = Assert.Single(plan.Items);
+                Assert.Equal("a.png", Path.GetFileName(item.OutputPath));
+            }
+        }
+
+        [Fact]
+        public void BuildsTiffPathForAllPages()
+        {
+            using (var workspace = new TempWorkspace())
+            {
+                workspace.CreateFile("a.cdr");
+
+                var plan = BatchExportPlanner.CreatePlan(workspace.Request(
+                    format: BatchExportFormat.Tiff,
+                    pageRange: BatchExportPageRange.AllPages));
+
+                var item = Assert.Single(plan.Items);
+                Assert.Equal("a-p01.tif", Path.GetFileName(item.OutputPath));
+            }
+        }
+
+        [Fact]
+        public void SkipsWhenAnyPageImageExists()
+        {
+            using (var workspace = new TempWorkspace())
+            {
+                workspace.CreateFile("a.cdr");
+                workspace.CreateFile(Path.Combine("output", "a-p03.png"));
+
+                var plan = BatchExportPlanner.CreatePlan(workspace.Request(
+                    format: BatchExportFormat.Png,
+                    pageRange: BatchExportPageRange.AllPages,
+                    overwriteExisting: false));
+
+                Assert.Empty(plan.Items);
+                Assert.Single(plan.SkippedSourcePaths);
+            }
+        }
+
+        [Fact]
+        public void IncludesWhenImageOutputExistsAndOverwriteIsSet()
+        {
+            using (var workspace = new TempWorkspace())
+            {
+                workspace.CreateFile("a.cdr");
+                workspace.CreateFile(Path.Combine("output", "a-p03.png"));
+
+                var plan = BatchExportPlanner.CreatePlan(workspace.Request(
+                    format: BatchExportFormat.Png,
+                    pageRange: BatchExportPageRange.AllPages,
+                    overwriteExisting: true));
+
+                var item = Assert.Single(plan.Items);
+                Assert.True(item.OverwritesExisting);
+            }
+        }
+
+        [Fact]
+        public void RejectsInvalidImageDpi()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => new BatchExportRequest(
+                @"C:\input",
+                @"C:\output",
+                BatchExportFormat.Png,
+                BatchExportPageRange.AllPages,
+                10,
+                false));
+        }
+
         private sealed class TempWorkspace : IDisposable
         {
             public TempWorkspace()
@@ -143,12 +239,18 @@ namespace CorelDRAWTool.Core.Tests
                 File.WriteAllText(fullPath, "test");
             }
 
-            public BatchExportRequest Request(bool overwriteExisting = false)
+            public BatchExportRequest Request(
+                BatchExportFormat format = BatchExportFormat.Pdf,
+                BatchExportPageRange pageRange = BatchExportPageRange.AllPages,
+                int imageDpi = 300,
+                bool overwriteExisting = false)
             {
                 return new BatchExportRequest(
                     Root,
                     Path.Combine(Root, "output"),
-                    BatchExportFormat.Pdf,
+                    format,
+                    pageRange,
+                    imageDpi,
                     overwriteExisting);
             }
 

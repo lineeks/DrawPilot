@@ -3,6 +3,9 @@ $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
 $output = Join-Path $root "src\CorelDRAWTool.Host\bin\Release\net48"
 $hostExe = Join-Path $output "CorelDRAWTool.Host.exe"
+$dataDir = Join-Path (Split-Path $output -Parent) "data"
+$settingsPath = Join-Path $dataDir "settings.json"
+$logDir = Join-Path $dataDir "logs"
 $inputDir = Join-Path $env:TEMP "CorelDRAWTool-batch-ui\input"
 $pdfDir = Join-Path $env:TEMP "CorelDRAWTool-batch-ui\output"
 $sample = Join-Path $inputDir "Sample.cdr"
@@ -33,6 +36,17 @@ if (-not (Test-Path $hostExe)) {
 
 New-Item -ItemType Directory -Path $pdfDir -Force | Out-Null
 Get-ChildItem $pdfDir -Filter "*.pdf" -ErrorAction SilentlyContinue | Remove-Item -Force
+
+# Reset settings so the test starts with PDF / all pages / 300 DPI defaults.
+New-Item -ItemType Directory -Path $dataDir -Force | Out-Null
+if (Test-Path $settingsPath) {
+    Remove-Item $settingsPath -Force
+}
+
+$beforeLogs = @()
+if (Test-Path $logDir) {
+    $beforeLogs = @(Get-ChildItem $logDir -Filter "batch-*.log" | Select-Object -ExpandProperty FullName)
+}
 
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes
@@ -87,9 +101,16 @@ try {
     $inputBox = Find-ByAutomationId $window "InputFolderBox"
     $outputBox = Find-ByAutomationId $window "OutputFolderBox"
     $startButton = Find-ByAutomationId $window "StartBatchExportButton"
+    $formatBox = Find-ByAutomationId $window "FormatBox"
+    $pageRangeBox = Find-ByAutomationId $window "PageRangeBox"
+    $dpiBox = Find-ByAutomationId $window "DpiBox"
 
     if ($null -eq $inputBox -or $null -eq $outputBox -or $null -eq $startButton) {
         throw "Batch export controls were not found."
+    }
+
+    if ($null -eq $formatBox -or $null -eq $pageRangeBox -or $null -eq $dpiBox) {
+        throw "Batch export option controls were not found."
     }
 
     Set-TextValue $inputBox $inputDir
@@ -124,7 +145,27 @@ try {
         throw "PDF is empty: $pdf"
     }
 
+    if (-not (Test-Path $settingsPath)) {
+        throw "Settings file was not saved: $settingsPath"
+    }
+
+    $newLogs = @()
+    if (Test-Path $logDir) {
+        $newLogs = @(Get-ChildItem $logDir -Filter "batch-*.log" |
+            Where-Object { $beforeLogs -notcontains $_.FullName })
+    }
+
+    if ($newLogs.Count -eq 0) {
+        throw "Batch log was not created in $logDir"
+    }
+
+    $logText = Get-Content $newLogs[0].FullName -Raw -Encoding UTF8
+    if ($logText -notmatch "CorelDRAWTool") {
+        throw "Batch log does not contain the expected header."
+    }
+
     Write-Host ("Batch UI export passed: {0} ({1} bytes)" -f $pdf, $size) -ForegroundColor Green
+    Write-Host ("Log: {0}" -f $newLogs[0].FullName) -ForegroundColor Green
 }
 finally {
     if (-not $process.HasExited) {

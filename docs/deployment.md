@@ -43,7 +43,7 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 2. 把 `src\CorelDRAWTool.Host\bin\Release\net48\*` 复制到 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool\app`；
 3. 如果存在 `shell\build\CorelDRAWTool.gms`，复制到 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS`。
 
-Host 与 GMS 放在同一目录下，GMS 宏会从自身路径推导 Host 位置。这样也避开了当前开发会话的 sandbox 对 `%LOCALAPPDATA%` 的重定向（被重定向的文件 CorelDRAW 看不到）。
+Host 与 GMS 放在同一目录下，GMS 宏会从自身路径推导 Host 位置。这样也避开了当前开发会话的 sandbox 对 `%LOCALAPPDATA%` 的重定向（被重定向的文件 CorelDRAW 看不到）。Host 的 `data` 子目录（`...\GMS\CorelDRAWTool\data`）存放设置和日志，重新部署 `app` 不会删除它。
 
 部署 Host 不需要管理员权限。更新 .NET 功能时只需重新运行部署脚本，不需要动 GMS。
 
@@ -62,7 +62,7 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1 -BuildShell
 ```
 
-`build-shell.ps1` 生成的 `shell\build\CorelDRAWTool.gms` 会被 `deploy.ps1` 复制到用户 GMS 目录。重启 CorelDRAW 后运行宏 `CorelDRAWToolShell.ShowCorelDRAWTool`（文档信息）或 `CorelDRAWToolShell.ShowBatchExport`（批量导出 PDF）；可选在“工具 > 自定义”中分配工具栏按钮或快捷键。
+`build-shell.ps1` 生成的 `shell\build\CorelDRAWTool.gms` 会被 `deploy.ps1` 复制到用户 GMS 目录。重启 CorelDRAW 后运行宏 `CorelDRAWToolShell.ShowCorelDRAWTool`（文档信息）或 `CorelDRAWToolShell.ShowBatchExport`（批量导出）；可选在“工具 > 自定义”中分配工具栏按钮或快捷键。
 
 如果自动构建失败（例如 VBA 项目对象模型被限制），按 `shell\README.md` 的手工步骤导入 `.bas` 并保存为 GMS。
 
@@ -75,15 +75,21 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1 -BuildShell
 3. Host 会附加到当前 CorelDRAW 实例，显示文档信息；
 4. “刷新”重新读取；“插入测试矩形”会在当前文档中心插入一个测试图形（会修改文档，注意保存）。
 
-### 批量导出 PDF
+### 批量导出
 
 1. 启动 CorelDRAW；
-2. 运行 `CorelDRAWToolShell.ShowBatchExport`，或在 Host 左侧选择“批量导出 PDF”；
-3. 选择包含 `.cdr` 的输入文件夹和输出文件夹，勾选是否覆盖已存在的 PDF；
-4. 点击“开始导出”。导出使用文档副本，不修改源文件；状态栏和文件列表显示进度与结果；
-5. 输出文件名与源文件同名，扩展名为 `.pdf`。
+2. 运行 `CorelDRAWToolShell.ShowBatchExport`，或在 Host 左侧选择“批量导出”；
+3. 选择包含 `.cdr` 的输入文件夹和输出文件夹；
+4. 选择格式（PDF / PNG / TIFF）、页面范围（全部页 / 当前页）；图片还可选 150/300/600 DPI；
+5. 勾选是否覆盖已存在的输出文件，点击“开始导出”。
 
-注意事项：导出期间不要操作当前文档；取消只在文件之间生效，当前文件会完成导出；复杂文档的 PDF 可能很大。
+导出使用文档副本，不修改源文件；状态栏和文件列表显示进度与结果。命名规则：
+
+- PDF：`名称.pdf`；
+- PNG/TIFF 全部页：`名称-p01.png`、`名称-p02.png`（TIFF 为 `.tif`）；
+- PNG/TIFF 当前页：`名称.png` / `名称.tif`。
+
+每次运行会在 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool\data\logs` 写日志；最近一次输入/输出/格式/页范围/DPI/覆盖选项保存在同目录的 `settings.json`。空页在图片导出时会跳过并记为 warning。导出期间不要操作当前文档；取消只在文件之间生效，当前文件会完成导出。
 
 ## 只读验证
 
@@ -97,14 +103,18 @@ powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\integration-test.ps1
+powershell -ExecutionPolicy Bypass -File scripts\adapter-batch-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-smoke-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-batch-test.ps1
+powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\e2e-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\e2e-batch-test.ps1
 ```
 
-- `ui-batch-test.ps1` 会自动创建测试 `.cdr`，通过 UI Automation 驱动批量导出并校验生成的 PDF。
-- `e2e-batch-test.ps1` 加载已部署的 GMS、运行 `ShowBatchExport`，确认 Host 打开到批量导出视图。
+- `adapter-batch-test.ps1` 验证 PNG/TIFF 逐页、PDF 全部/当前页、空页 warning。
+- `ui-batch-test.ps1` 通过 UI Automation 驱动 PDF 批量导出并校验 PDF、日志和设置文件。
+- `ui-batch-images-test.ps1` 通过设置文件加载 PNG 选项，驱动 UI 导出两页 PNG。
+- `e2e-batch-test.ps1` 加载已部署的 GMS、运行 `ShowBatchExport`，确认 Host 打开到批量导出视图并包含格式选择器。
 
 ## 调试 .NET Host
 
@@ -122,13 +132,15 @@ powershell -ExecutionPolicy Bypass -File scripts\e2e-batch-test.ps1
 | `deploy.ps1` 提示文件被占用 | 先关闭正在运行的 Host，再部署。 |
 | GMS 中找不到宏 | 检查 GMS 是否在用户 GMS 目录，重启 CorelDRAW；确认工程已保存。 |
 | 插入测试矩形失败 | 当前没有打开文档、文档没有图层，或对象被锁定。 |
-| 批量导出后没有 PDF | 检查输出文件夹写权限、源文件是否损坏/被占用；查看 Host 状态栏的逐文件错误。 |
-| 批量列表显示“已跳过” | 输出 PDF 已存在且未勾选“覆盖已存在的 PDF”。 |
+| 批量导出后没有输出 | 检查输出文件夹写权限、源文件是否损坏/被占用；查看 Host 状态栏和 `data\logs` 的逐文件错误。 |
+| 批量列表显示“已跳过” | 输出文件已存在且未勾选“覆盖已存在的输出文件”。 |
+| PNG/TIFF 某些页缺失 | 空白页无法导出，Host 会记录 warning；这是 CorelDRAW 的限制。 |
 | 批量导出很慢或 PDF 很大 | PDF 使用 CorelDRAW 默认设置；复杂文档需要时间。可取消，当前文件完成后停止。 |
+| 想恢复默认设置 | 删除 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool\data\settings.json`。 |
 | `ShellExecuteW error 2` | Host 不在 GMS 同目录；重新运行 `deploy.ps1`。不要部署到被 sandbox 重定向的 `%LOCALAPPDATA%`。 |
 
 ## 卸载
 
 - 删除 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool.gms`。
-- 删除 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool` 目录（Host 及依赖）。
+- 删除 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool` 目录（Host、依赖、设置和日志）。
 - 不涉及注册表。

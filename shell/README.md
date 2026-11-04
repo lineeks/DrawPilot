@@ -28,7 +28,7 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 重启 CorelDRAW 后，在“工具 > 宏”中运行：
 
 - `CorelDRAWToolShell.ShowCorelDRAWTool`：打开 Host，默认显示文档信息；
-- `CorelDRAWToolShell.ShowBatchExport`：打开 Host，直接进入批量导出 PDF。
+- `CorelDRAWToolShell.ShowBatchExport`：打开 Host，直接进入批量导出。
 
 > 如果 CorelDRAW 中已经加载了同名的 `CorelDRAWTool` GMS 且有未保存修改，`build-shell.ps1` 会拒绝覆盖。请先在 VBA 编辑器中保存或关闭。
 

@@ -35,8 +35,14 @@ namespace CorelDRAWTool.Core.Batch
 
             foreach (string sourcePath in sourceFiles)
             {
-                string outputPath = BuildOutputPath(sourcePath, request.OutputFolder, request.Format);
-                bool outputExists = File.Exists(outputPath);
+                string outputPath = BatchExportNaming.GetOutputPath(
+                    sourcePath,
+                    request.OutputFolder,
+                    request.Format,
+                    request.PageRange,
+                    1);
+
+                bool outputExists = OutputExists(request, sourcePath, outputPath);
 
                 if (outputExists && !request.OverwriteExisting)
                 {
@@ -55,30 +61,37 @@ namespace CorelDRAWTool.Core.Batch
             string outputFolder,
             BatchExportFormat format)
         {
-            if (string.IsNullOrWhiteSpace(sourcePath))
-            {
-                throw new ArgumentException("源文件路径不能为空。", nameof(sourcePath));
-            }
-
-            if (string.IsNullOrWhiteSpace(outputFolder))
-            {
-                throw new ArgumentException("输出文件夹不能为空。", nameof(outputFolder));
-            }
-
-            return Path.Combine(
+            return BatchExportNaming.GetOutputPath(
+                sourcePath,
                 outputFolder,
-                Path.GetFileNameWithoutExtension(sourcePath) + GetExtension(format));
+                format,
+                BatchExportPageRange.AllPages,
+                1);
         }
 
-        private static string GetExtension(BatchExportFormat format)
+        private static bool OutputExists(
+            BatchExportRequest request,
+            string sourcePath,
+            string outputPath)
         {
-            switch (format)
+            if (request.Format == BatchExportFormat.Pdf)
             {
-                case BatchExportFormat.Pdf:
-                    return ".pdf";
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(format));
+                return File.Exists(outputPath);
             }
+
+            if (!Directory.Exists(request.OutputFolder))
+            {
+                return false;
+            }
+
+            string pattern = BatchExportNaming.GetSearchPattern(
+                sourcePath,
+                request.Format,
+                request.PageRange);
+
+            return Directory
+                .EnumerateFiles(request.OutputFolder, pattern, SearchOption.TopDirectoryOnly)
+                .Any();
         }
     }
 }

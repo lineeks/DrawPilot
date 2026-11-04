@@ -1,6 +1,6 @@
 # CorelDRAWTool
 
-面向内部团队的 CorelDRAW 2025 效率工具。已提供文档信息面板和文件夹批量导出 PDF，后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
+面向内部团队的 CorelDRAW 2025 效率工具。已提供文档信息面板和文件夹批量导出（PDF / PNG / TIFF），后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
 
 ## 架构
 
@@ -45,11 +45,18 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 然后按 `shell\README.md` 安装 GMS 壳，在 CorelDRAW 中运行：
 
 - `CorelDRAWToolShell.ShowCorelDRAWTool`：打开 Host，默认显示文档信息；
-- `CorelDRAWToolShell.ShowBatchExport`：打开 Host，直接进入批量导出 PDF。
+- `CorelDRAWToolShell.ShowBatchExport`：打开 Host，直接进入批量导出。
 
-## 批量导出 PDF
+## 批量导出
 
-在 Host 左侧选择“批量导出 PDF”（或直接运行 `ShowBatchExport` 宏），选择输入文件夹（包含 `.cdr`）和输出文件夹，勾选是否覆盖已存在的 PDF，点击“开始导出”。导出使用文档副本，不会修改源文件；任务在后台 STA 线程执行，完成后显示每个文件的成功/失败/跳过状态。
+在 Host 左侧选择“批量导出”（或直接运行 `ShowBatchExport` 宏），选择输入文件夹（包含 `.cdr`）和输出文件夹，然后选择：
+
+- 格式：PDF / PNG / TIFF；
+- 页面范围：全部页 / 当前页；
+- 图片分辨率：150 / 300 / 600 DPI（仅 PNG/TIFF）；
+- 是否覆盖已存在的输出文件。
+
+导出使用文档副本，不会修改源文件；任务在后台 STA 线程执行，逐个文件显示成功/失败/跳过状态。PDF 输出为 `名称.pdf`；PNG/TIFF 全部页输出为 `名称-p01.png`、`名称-p02.png`（TIFF 为 `.tif`），当前页输出为 `名称.png` / `名称.tif`。每次运行会在 Host 的 `data\logs` 目录写日志，最近一次输入/输出/格式/页范围/DPI 保存在 `data\settings.json`。空页在图片导出时会跳过并记录警告。
 
 只读验证 COM 连接：
 
@@ -61,6 +68,7 @@ powershell -ExecutionPolicy Bypass -File scripts\smoke-test.ps1
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\integration-test.ps1
+powershell -ExecutionPolicy Bypass -File scripts\adapter-batch-test.ps1
 ```
 
 GMS → Host → COM 端到端验证：
@@ -74,6 +82,7 @@ powershell -ExecutionPolicy Bypass -File scripts\e2e-batch-test.ps1
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts\ui-batch-test.ps1
+powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 ```
 
 ## 当前状态
@@ -81,15 +90,16 @@ powershell -ExecutionPolicy Bypass -File scripts\ui-batch-test.ps1
 - [x] 解决方案骨架与构建脚本
 - [x] CorelDRAW COM 附加与文档信息读取（已在本机验证）
 - [x] WPF Host、功能清单、文档信息视图
-- [x] 文件夹批量导出 PDF（后台 STA 执行，已在本机验证）
-- [x] 单元测试（16 个）
+- [x] 文件夹批量导出 PDF / PNG / TIFF（全部页/当前页、DPI、后台 STA，已在本机验证）
+- [x] 批量导出日志与最近设置持久化
+- [x] 单元测试（32 个）
 - [x] 部署、冒烟测试、适配层集成测试、UI 与 GMS 端到端测试脚本
 - [x] GMS 自动构建
 - [x] 部署脚本与文档
 - [ ] GMS 菜单/工具栏自动注册
 - [ ] 批量转换 / 重命名 / 预检等其他批量能力
 - [ ] 印前 / 绘图 / 面板功能
-- [ ] 日志与全局异常处理
+- [ ] 全局异常处理
 
 ## 环境要求
 

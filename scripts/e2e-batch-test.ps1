@@ -16,10 +16,14 @@ if (-not (Test-Path $gmsPath)) {
 $expectedTitle = [CorelDRAWTool.Core.Features.FeatureCatalog]::Find("batch-export").Title
 
 $app = New-Object -ComObject CorelDRAW.Application
+$app.InitializeVBA() | Out-Null
+
 $project = $null
-foreach ($p in $app.GMSManager.Projects) {
-    if ($p.Name -eq "CorelDRAWTool") {
-        $project = $p
+$projects = $app.GMSManager.Projects
+for ($i = 1; $i -le $projects.Count; $i++) {
+    $candidate = $projects.Item($i)
+    if ($candidate.Name -eq "CorelDRAWTool") {
+        $project = $candidate
     }
 }
 
@@ -91,6 +95,18 @@ foreach ($element in $elements) {
 
 if (-not $names.Contains($expectedTitle)) {
     throw "Batch export view was not shown."
+}
+
+$formatCondition = New-Object -TypeName System.Windows.Automation.PropertyCondition -ArgumentList @(
+    [System.Windows.Automation.AutomationElement]::AutomationIdProperty,
+    "FormatBox"
+)
+$formatBox = $window.FindFirst(
+    [System.Windows.Automation.TreeScope]::Descendants,
+    $formatCondition)
+
+if ($null -eq $formatBox) {
+    throw "Batch export format selector was not found."
 }
 
 Write-Host ("Host window: {0}" -f $window.Current.Name) -ForegroundColor Green

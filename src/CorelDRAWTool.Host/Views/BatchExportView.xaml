@@ -84,11 +84,11 @@
           BorderThickness="1"
           Padding="22">
     <StackPanel>
-      <TextBlock Text="批量导出 PDF"
+      <TextBlock Text="批量导出"
                  FontSize="24"
                  FontWeight="SemiBold"
                  Foreground="#111827" />
-      <TextBlock Text="选择一个文件夹，把其中的 .cdr 逐个导出为 PDF。导出使用文档副本，不会修改源文件；导出期间请勿在 CorelDRAW 中操作当前文档。"
+      <TextBlock Text="选择一个文件夹，把其中的 .cdr 批量导出为 PDF、PNG 或 TIFF。导出使用文档副本，不会修改源文件；导出期间请勿在 CorelDRAW 中操作当前文档。"
                  FontSize="12"
                  Foreground="#6B7280"
                  Margin="0,6,0,4"
@@ -132,7 +132,58 @@
                 Margin="8,0,0,0" />
       </Grid>
 
-      <CheckBox Content="覆盖已存在的 PDF"
+      <Grid Margin="0,14,0,0">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+          <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+          <TextBlock Text="格式"
+                     Style="{StaticResource FieldLabelStyle}"
+                     Margin="0,0,0,4" />
+          <ComboBox ItemsSource="{Binding FormatOptions}"
+                    SelectedItem="{Binding SelectedFormatOption}"
+                    DisplayMemberPath="Label"
+                    Height="30"
+                    FontSize="12"
+                    AutomationProperties.AutomationId="FormatBox" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="1" Margin="8,0,8,0">
+          <TextBlock Text="页面范围"
+                     Style="{StaticResource FieldLabelStyle}"
+                     Margin="0,0,0,4" />
+          <ComboBox ItemsSource="{Binding PageRangeOptions}"
+                    SelectedItem="{Binding SelectedPageRangeOption}"
+                    DisplayMemberPath="Label"
+                    Height="30"
+                    FontSize="12"
+                    AutomationProperties.AutomationId="PageRangeBox" />
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Margin="8,0,0,0">
+          <TextBlock Text="图片分辨率"
+                     Style="{StaticResource FieldLabelStyle}"
+                     Margin="0,0,0,4" />
+          <ComboBox ItemsSource="{Binding DpiOptions}"
+                    SelectedItem="{Binding SelectedDpiOption}"
+                    DisplayMemberPath="Label"
+                    Height="30"
+                    FontSize="12"
+                    IsEnabled="{Binding IsImageFormat}"
+                    AutomationProperties.AutomationId="DpiBox" />
+        </StackPanel>
+      </Grid>
+
+      <TextBlock Text="PDF 使用 CorelDRAW 默认 PDF 设置；PNG/TIFF 使用所选分辨率。"
+                 FontSize="11"
+                 Foreground="#9CA3AF"
+                 Margin="0,8,0,0"
+                 TextWrapping="Wrap" />
+
+      <CheckBox Content="覆盖已存在的输出文件"
                 IsChecked="{Binding OverwriteExisting}"
                 Margin="0,16,0,0"
                 FontSize="12"
@@ -148,6 +199,11 @@
                 Style="{StaticResource SecondaryButtonStyle}"
                 Margin="10,0,0,0"
                 AutomationProperties.AutomationId="CancelBatchExportButton" />
+        <Button Content="打开日志文件夹"
+                Command="{Binding OpenLogFolderCommand}"
+                Style="{StaticResource SecondaryButtonStyle}"
+                Margin="10,0,0,0"
+                AutomationProperties.AutomationId="OpenLogFolderButton" />
       </StackPanel>
 
       <ProgressBar Height="6"
@@ -162,6 +218,12 @@
                  FontSize="12"
                  Foreground="#4B5563"
                  Margin="0,10,0,0"
+                 TextWrapping="Wrap" />
+
+      <TextBlock Text="{Binding LogFilePath}"
+                 FontSize="10"
+                 Foreground="#9CA3AF"
+                 Margin="0,4,0,0"
                  TextWrapping="Wrap" />
 
       <TextBlock Text="文件"

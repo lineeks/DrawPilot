@@ -14,6 +14,6 @@ namespace CorelDRAWTool.Corel
 
         void CreateTestRectangle();
 
-        void ExportDocumentToPdf(string sourceFile, string outputFile);
+        DocumentExportResult ExportDocument(BatchExportItem item, BatchExportRequest request);
     }
 }

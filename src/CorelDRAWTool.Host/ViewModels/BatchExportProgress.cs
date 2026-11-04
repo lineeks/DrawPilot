@@ -1,3 +1,6 @@
+using System.Collections.Generic;
+using System.Linq;
+
 namespace CorelDRAWTool.Host.ViewModels
 {
     public enum BatchExportProgressKind
@@ -18,7 +21,9 @@ namespace CorelDRAWTool.Host.ViewModels
             int completedCount,
             int total,
             string fileName,
-            string message)
+            string message,
+            IEnumerable<string> outputPaths,
+            IEnumerable<string> warnings)
         {
             Kind = kind;
             ItemIndex = itemIndex;
@@ -26,6 +31,8 @@ namespace CorelDRAWTool.Host.ViewModels
             Total = total;
             FileName = fileName ?? string.Empty;
             Message = message ?? string.Empty;
+            OutputPaths = (outputPaths ?? Enumerable.Empty<string>()).ToArray();
+            Warnings = (warnings ?? Enumerable.Empty<string>()).ToArray();
         }
 
         public BatchExportProgressKind Kind { get; }
@@ -40,6 +47,10 @@ namespace CorelDRAWTool.Host.ViewModels
 
         public string Message { get; }
 
+        public IReadOnlyList<string> OutputPaths { get; }
+
+        public IReadOnlyList<string> Warnings { get; }
+
         public static BatchExportProgress Started(
             int itemIndex,
             int completedCount,
@@ -52,6 +63,8 @@ namespace CorelDRAWTool.Host.ViewModels
                 completedCount,
                 total,
                 fileName,
+                null,
+                null,
                 null);
         }
 
@@ -59,7 +72,9 @@ namespace CorelDRAWTool.Host.ViewModels
             int itemIndex,
             int completedCount,
             int total,
-            string fileName)
+            string fileName,
+            IEnumerable<string> outputPaths,
+            IEnumerable<string> warnings)
         {
             return new BatchExportProgress(
                 BatchExportProgressKind.Succeeded,
@@ -67,7 +82,9 @@ namespace CorelDRAWTool.Host.ViewModels
                 completedCount,
                 total,
                 fileName,
-                null);
+                null,
+                outputPaths,
+                warnings);
         }
 
         public static BatchExportProgress Failed(
@@ -83,7 +100,9 @@ namespace CorelDRAWTool.Host.ViewModels
                 completedCount,
                 total,
                 fileName,
-                message);
+                message,
+                null,
+                null);
         }
 
         public static BatchExportProgress Completed(int completedCount, int total)
@@ -93,6 +112,8 @@ namespace CorelDRAWTool.Host.ViewModels
                 -1,
                 completedCount,
                 total,
+                null,
+                null,
                 null,
                 null);
         }
@@ -105,6 +126,8 @@ namespace CorelDRAWTool.Host.ViewModels
                 completedCount,
                 total,
                 null,
+                null,
+                null,
                 null);
         }
 
@@ -116,7 +139,9 @@ namespace CorelDRAWTool.Host.ViewModels
                 completedCount,
                 total,
                 null,
-                message);
+                message,
+                null,
+                null);
         }
     }
 }

@@ -2,7 +2,7 @@
 
 ## 目标
 
-面向内部团队的 CorelDRAW 2025 效率工具。已覆盖文档信息与文件夹批量导出 PDF，后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
+面向内部团队的 CorelDRAW 2025 效率工具。已覆盖文档信息与文件夹批量导出（PDF/PNG/TIFF），后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
 
 ## 运行时形态
 
@@ -28,31 +28,34 @@ GMS 壳只做一件事：找到并启动 Host，传入命令 ID。业务逻辑�
 
 | 项目 | 目标框架 | 职责 | 禁止 |
 |---|---|---|---|
-| `CorelDRAWTool.Core` | net48 | 纯业务模型、功能清单、批量导出计划器 | 引用 Corel 互操作类型 |
-| `CorelDRAWTool.Corel` | net48 | 唯一 COM 适配层；附加、读取文档、批量导出 PDF | 依赖 WPF |
-| `CorelDRAWTool.Host` | net48 / WPF | UI、命令编排、文档信息、批量导出 STA 执行 | 直接引用 `Corel.Interop.VGCore` |
+| `CorelDRAWTool.Core` | net48 | 纯业务模型、功能清单、批量计划/命名/设置 | 引用 Corel 互操作类型 |
+| `CorelDRAWTool.Corel` | net48 | 唯一 COM 适配层；附加、读取文档、批量导出 PDF/PNG/TIFF | 依赖 WPF |
+| `CorelDRAWTool.Host` | net48 / WPF | UI、命令编排、文档信息、批量 STA 执行、日志/设置 | 直接引用 `Corel.Interop.VGCore` |
 | `CorelDRAWTool.Shell` | VBA | 菜单/按钮入口、启动 Host | 承载业务逻辑 |
-| `tests/CorelDRAWTool.Core.Tests` | net48 | 核心逻辑与批量计划器单元测试 | 依赖 CorelDRAW |
+| `tests/CorelDRAWTool.Core.Tests` | net48 | 核心逻辑、计划器、命名、设置单元测试 | 依赖 CorelDRAW |
 
-## 批量导出 PDF 数据流
+## 批量导出数据流
 
 ```
 BatchExportView / BatchExportViewModel（UI 线程）
-   │ 1. BatchExportPlanner.CreatePlan（纯逻辑：枚举 .cdr、计算输出、跳过已存在）
+   │ 1. BatchExportPlanner.CreatePlan（纯逻辑：枚举 .cdr、命名、覆盖/跳过）
    │ 2. 启动专用 STA 工作线程
    ▼
 CorelDrawSession（工作线程内独立 session）
-   │ 3. ExportDocumentToPdf(source, output)
+   │ 3. ExportDocument(item, request)
    │    OpenDocumentAsCopy(source)
-   │    PublishToPDF(output)
+   │    PDF:  PDFSettings.PublishRange + PublishToPDF
+   │    图片: 逐页 Activate + ExportBitmap + ExportFilter.Finish
    │    Dirty = false; Close()
    ▼
-Progress<BatchExportProgress> ──► UI 更新逐文件状态 / 进度条 / 汇总
+Progress<BatchExportProgress> ──► UI 逐文件状态 / 进度条 / 汇总
 ```
 
+- 输出命名：PDF `name.pdf`；图片全部页 `name-p01.png/.tif`；当前页 `name.png/.tif`。
 - 导出使用文档副本，不修改源文件。
+- 空页在 PNG/TIFF 导出时会被跳过并记录 warning；全部页失败时整份文件失败。
+- PDF 使用 CorelDRAW 默认 PDF 设置；设置与日志保存在 Host 的 `data` 目录。
 - 取消只在文件之间生效；当前文件会完成导出。
-- PDF 使用 CorelDRAW 默认 PDF 设置；后续可增加导出预设。
 
 ## 关键决策
 
@@ -90,15 +93,18 @@ CorelDRAW 正常启动时不会把 `Application` 注册到 ROT，`Marshal.GetAct
 %APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\
 ├─ CorelDRAWTool.gms
 └─ CorelDRAWTool\
-   └─ app\
-      ├─ CorelDRAWTool.Host.exe
-      ├─ CorelDRAWTool.Core.dll
-      ├─ CorelDRAWTool.Corel.dll
-      ├─ Corel.Interop.VGCore.dll
-      └─ ...
+   ├─ app\
+   │  ├─ CorelDRAWTool.Host.exe
+   │  ├─ CorelDRAWTool.Core.dll
+   │  ├─ CorelDRAWTool.Corel.dll
+   │  ├─ Corel.Interop.VGCore.dll
+   │  └─ ...
+   └─ data\
+      ├─ settings.json
+      └─ logs\batch-*.log
 ```
 
-GMS 宏通过 `Application.GMSManager.Projects("CorelDRAWTool").FullFileName` 取自身路径，再定位同目录的 Host。不要使用 `%LOCALAPPDATA%\CorelDRAWTool`：Claude Code 桌面会话的 sandbox 会把该路径重定向到 `Packages\Claude_...\LocalCache`，CorelDRAW 进程不可见。
+`deploy.ps1` 只替换 `app` 目录，`data`（设置和日志）会保留。GMS 宏通过 `Application.GMSManager.Projects("CorelDRAWTool").FullFileName` 取自身路径，再定位同目录的 Host。不要使用 `%LOCALAPPDATA%\CorelDRAWTool`：Claude Code 桌面会话的 sandbox 会把该路径重定向到 `Packages\Claude_...\LocalCache`，CorelDRAW 进程不可见。
 
 ## 扩展方式
 
@@ -124,6 +130,8 @@ GMS 宏通过 `Application.GMSManager.Projects("CorelDRAWTool").FullFileName` �
 - 只验证了 CorelDRAW 2025（v26）；跨版本需要重新确认 ProgID、互操作版本和 API 差异。
 - 浮窗不能像原生 Docker 一样停靠在 CorelDRAW 窗口内部。
 - GMS 自动构建依赖 CorelDRAW 正在运行且 VBA 项目对象模型可访问；手工导入作为兜底。
-- 批量导出 PDF 使用 CorelDRAW 默认 PDF 设置，暂未提供页面范围、压缩、字体嵌入等预设。
+- PDF 使用 CorelDRAW 默认 PDF 设置，暂未提供压缩、字体嵌入等预设；PDF 的“当前页”指文档副本的当前页（通常第 1 页）。
+- PNG/TIFF 使用 RGB、TIFF LZW，暂未提供 CMYK/透明/颜色配置选项。
+- 图片导出时空白页会被跳过并记录 warning；全部页失败时整份文件失败。
 - 取消只在文件之间生效，当前文件会完成导出；复杂文档的 PDF 可能很大。
-- 目前没有日志系统；错误显示在 Host 底部状态栏。
+- 目前没有全局异常处理/崩溃日志；错误显示在 Host 状态栏和批量日志中。

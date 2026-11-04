@@ -20,7 +20,7 @@ namespace CorelDRAWTool.Core.Features
                 FeatureCategory.Document,
                 true),
 
-            new FeatureDescriptor("batch-export", "批量导出 PDF", "选择一个文件夹，把其中的 .cdr 逐个导出为 PDF。", FeatureCategory.Batch, true),
+            new FeatureDescriptor("batch-export", "批量导出", "选择一个文件夹，把其中的 .cdr 批量导出为 PDF、PNG 或 TIFF。", FeatureCategory.Batch, true),
             new FeatureDescriptor("batch-convert", "批量转换 / 转曲", "批量转换文件格式、转曲与统一处理。", FeatureCategory.Batch, false),
             new FeatureDescriptor("batch-rename", "批量重命名", "按规则重命名文档、页面或导出文件。", FeatureCategory.Batch, false),
             new FeatureDescriptor("batch-preflight", "批量预检", "批量检查字体、颜色、出血与图片分辨率。", FeatureCategory.Batch, false),

@@ -2,6 +2,8 @@ namespace CorelDRAWTool.Core.Models
 {
     public enum BatchExportFormat
     {
-        Pdf
+        Pdf,
+        Png,
+        Tiff
     }
 }

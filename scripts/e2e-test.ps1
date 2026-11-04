@@ -15,10 +15,14 @@ if (-not (Test-Path $gmsPath)) {
 [Reflection.Assembly]::LoadFrom((Join-Path $appDir "CorelDRAWTool.Core.dll")) | Out-Null
 
 $app = New-Object -ComObject CorelDRAW.Application
+$app.InitializeVBA() | Out-Null
+
 $project = $null
-foreach ($p in $app.GMSManager.Projects) {
-    if ($p.Name -eq "CorelDRAWTool") {
-        $project = $p
+$projects = $app.GMSManager.Projects
+for ($i = 1; $i -le $projects.Count; $i++) {
+    $candidate = $projects.Item($i)
+    if ($candidate.Name -eq "CorelDRAWTool") {
+        $project = $candidate
     }
 }
 

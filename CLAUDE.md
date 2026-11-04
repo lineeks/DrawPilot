@@ -6,11 +6,11 @@ CorelDRAW 2025 内部效率工具：极薄的 VBA/GMS 入口 + 进程外 .NET Fr
 
 ## 当前状态
 
-- 解决方案骨架已建立，Release 构建通过，16 个单元测试通过。
+- 解决方案骨架已建立，Release 构建通过，32 个单元测试通过。
 - COM 附加已在本机验证（2026-11-04）：能附加到正常启动的 CorelDRAW 并读取活动文档信息。
 - GMS 宏 → Host → COM 端到端链路已通过（`scripts\e2e-test.ps1`、`scripts\e2e-batch-test.ps1`）。
-- 已实现：GMS 启动器源码与自动构建、COM 附加层、文档信息视图、文件夹批量导出 PDF（后台 STA 线程）、部署与验证脚本。
-- 未实现：GMS 菜单/工具栏自动注册、其他批量能力（转换/重命名/预检）、印前/绘图/面板功能、日志、跨版本兼容。
+- 已实现：GMS 启动器源码与自动构建、COM 附加层、文档信息视图、文件夹批量导出（PDF/PNG/TIFF、全部页/当前页、DPI）、批量日志与设置持久化、部署与验证脚本。
+- 未实现：GMS 菜单/工具栏自动注册、其他批量能力（转换/重命名/预检）、印前/绘图/面板功能、全局异常处理、跨版本兼容。
 
 ## 环境（本机，2026-11-04 确认）
 
@@ -39,8 +39,12 @@ CorelDRAW 2025 内部效率工具：极薄的 VBA/GMS 入口 + 进程外 .NET Fr
 ### 批量导出实现
 
 - Core：`Batch/BatchExportPlanner` 只做纯计划（枚举 `.cdr`、计算输出路径、处理覆盖/跳过），不访问 CorelDRAW。
-- Corel：`CorelDrawSession.ExportDocumentToPdf` 使用 `OpenDocumentAsCopy` + `PublishToPDF` + `Close`，不修改源文件。
+- Core：`Batch/BatchExportNaming` 统一命名：PDF `name.pdf`；图片全部页 `name-p01.png/.tif`；当前页 `name.png/.tif`。
+- Corel：`CorelDrawSession.ExportDocument(item, request)` 使用 `OpenDocumentAsCopy` + 导出 + `Close`，不修改源文件。
+  - PDF 通过 `PDFSettings.PublishRange` 设置 `pdfWholeDocument` / `pdfCurrentPage`，再 `PublishToPDF`。
+  - PNG/TIFF 逐页 `Page.Activate()` + `ExportBitmap(...)`，返回的 `ExportFilter` 必须调用 `Finish()`；空页会抛 E_FAIL，代码记录为 warning 并继续。
 - Host：`BatchExportViewModel` 在专用 STA 工作线程上创建独立 `CorelDrawSession`，通过 `Progress<T>` 把进度回报到 UI；不要改为在 UI 线程或 MTA 后台线程直接调用 COM。
+- Host：设置保存在 `data\settings.json`，日志写到 `data\logs\batch-*.log`；`data` 在 Host app 目录旁边，部署不会覆盖。
 - 取消只在文件之间生效，当前正在导出的文件会完成。
 
 ## 构建 / 测试 / 部署
@@ -52,20 +56,24 @@ powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 powershell -ExecutionPolicy Bypass -File scripts\build-shell.ps1
 powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 powershell -ExecutionPolicy Bypass -File scripts\integration-test.ps1
+powershell -ExecutionPolicy Bypass -File scripts\adapter-batch-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-smoke-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\e2e-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\e2e-batch-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-batch-test.ps1
+powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 ```
 
 - `build-shell.ps1` 需要 CorelDRAW 正在运行；它用 `GMSManager` + VBE 生成 `shell\build\CorelDRAWTool.gms`，宏路径为 `CorelDRAWToolShell.ShowCorelDRAWTool` 和 `CorelDRAWToolShell.ShowBatchExport`。
 - `deploy.ps1 -BuildShell` 可先构建 GMS 再部署。
 - `e2e-test.ps1` / `e2e-batch-test.ps1` 会加载已部署的 GMS、运行对应宏、启动 Host 并用 UI Automation 验证窗口，然后关闭 Host。
-- `ui-batch-test.ps1` 会自动创建测试 `.cdr`，通过 UI Automation 驱动批量导出并校验生成的 PDF。
+- `adapter-batch-test.ps1` 验证 PNG/TIFF/PDF 页面范围/空页告警；`ui-batch-test.ps1` 验证 PDF UI 流程；`ui-batch-images-test.ps1` 通过设置加载 PNG 并验证逐页输出。
+- 自动化脚本访问 `GMSManager.Projects` 前先调用 `Application.InitializeVBA()`；COM 集合用 `Item(i)` 索引遍历，不要依赖 PowerShell `foreach`（GMSProjects/GMSMacros 的枚举不可靠）。
 
 - 目标框架：`net48`（WPF Host 使用 `net48` + `UseWPF`）。
 - 通过 `Directory.Build.props` 的 `CorelDrawDir` 定位互操作程序集；可用 `-p:CorelDrawDir=...` 或 `CORELDRAW_DIR` 覆盖。
 - 部署路径：Host 到 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool\app`；GMS 到同一 GMS 目录。GMS 宏从自身路径定位 Host。
+- Host 的 `data` 目录（`...\GMS\CorelDRAWTool\data`）存放 `settings.json` 和 `logs\batch-*.log`；`deploy.ps1` 只替换 `app`，不会删除 `data`。
 - **不要**把 Host 部署到 `%LOCALAPPDATA%\CorelDRAWTool`：Claude Code 桌面会话的 sandbox 会重定向该路径，CorelDRAW 进程看不到。
 - `scripts/smoke-test.ps1` 做只读 COM 验证，不修改文档。
 
@@ -84,13 +92,15 @@ powershell -ExecutionPolicy Bypass -File scripts\ui-batch-test.ps1
 - 仅验证 CorelDRAW 2025（v26）。
 - 浮窗不是原生 Docker，不能停靠在 CorelDRAW 窗口内部。
 - GMS 自动构建依赖 CorelDRAW 正在运行且 VBA 项目对象模型可访问；手工导入作为兜底，见 `shell/README.md`。
-- 批量导出 PDF 使用 CorelDRAW 默认 PDF 设置，暂未提供导出预设（页面范围、压缩、字体嵌入等）。
+- PDF 使用 CorelDRAW 默认 PDF 设置，暂未提供页面压缩、字体嵌入等预设；PDF 的“当前页”指文档副本的当前页（通常第 1 页）。
+- PNG/TIFF 使用 RGB 颜色、TIFF LZW 压缩，暂未提供 CMYK/透明/颜色配置选项。
+- 图片导出时空白页会被跳过并记录 warning；如果整份文档所有页都无法导出，则该文件记为失败。
 - 取消只在文件之间生效，当前文件会完成导出；复杂文档的 PDF 可能很大、耗时较长。
-- 无日志系统，错误显示在 Host 状态栏。
+- 目前没有全局异常处理/崩溃日志；错误显示在 Host 状态栏和批量日志中。
 
 ## 下一步（建议顺序）
 
-1. 扩展批量导出（PNG/TIFF、页面范围、PDF 预设）或实现批量转换/重命名/预检。
+1. 批量转换 / 重命名 / 预检，或 PDF 预设（压缩、字体嵌入）与图片 CMYK/透明选项。
 2. 自动注册 GMS 菜单/工具栏按钮（当前需从“工具 > 宏”手动运行，或由用户自行分配快捷键）。
-3. 增加日志（本地文件）与全局异常处理。
-4. 视需要引入设置持久化（JSON 或注册表 HKCU）。
+3. 增加全局异常处理与 Host 崩溃日志。
+4. 视需要扩展印前/绘图/面板功能。

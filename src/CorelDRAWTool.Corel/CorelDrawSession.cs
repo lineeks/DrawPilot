@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading;
+using CorelDRAWTool.Core.Batch;
 using CorelDRAWTool.Core.Models;
 using Corel.Interop.VGCore;
 
@@ -304,16 +307,16 @@ namespace CorelDRAWTool.Corel
             }
         }
 
-        public void ExportDocumentToPdf(string sourceFile, string outputFile)
+        public DocumentExportResult ExportDocument(BatchExportItem item, BatchExportRequest request)
         {
-            if (string.IsNullOrWhiteSpace(sourceFile))
+            if (item == null)
             {
-                throw new ArgumentException("源文件路径不能为空。", nameof(sourceFile));
+                throw new ArgumentNullException(nameof(item));
             }
 
-            if (string.IsNullOrWhiteSpace(outputFile))
+            if (request == null)
             {
-                throw new ArgumentException("输出文件路径不能为空。", nameof(outputFile));
+                throw new ArgumentNullException(nameof(request));
             }
 
             EnsureConnected();
@@ -322,14 +325,42 @@ namespace CorelDRAWTool.Corel
             try
             {
                 StructOpenOptions openOptions = _application.CreateStructOpenOptions();
-                document = _application.OpenDocumentAsCopy(sourceFile, openOptions) as IVGDocument;
+                document = _application.OpenDocumentAsCopy(item.SourcePath, openOptions) as IVGDocument;
                 if (document == null)
                 {
-                    throw new CorelDrawException("无法打开文档副本：" + sourceFile);
+                    throw new CorelDrawException("无法打开文档副本：" + item.SourcePath);
                 }
 
-                document.PublishToPDF(outputFile);
+                try
+                {
+                    document.Activate();
+                }
+                catch (COMException)
+                {
+                }
+
+                int pageCount = GetPageCount(document);
+                var outputPaths = new List<string>();
+                var warnings = new List<string>();
+
+                if (request.Format == BatchExportFormat.Pdf)
+                {
+                    ExportToPdf(document, item, request, outputPaths);
+                }
+                else
+                {
+                    ExportToImages(document, item, request, outputPaths, warnings);
+                }
+
                 document.Dirty = false;
+
+                if (outputPaths.Count == 0)
+                {
+                    throw new CorelDrawException(
+                        warnings.Count > 0 ? warnings[0] : "没有生成任何输出文件。");
+                }
+
+                return new DocumentExportResult(outputPaths, warnings, pageCount);
             }
             catch (CorelDrawException)
             {
@@ -337,7 +368,7 @@ namespace CorelDRAWTool.Corel
             }
             catch (COMException ex)
             {
-                throw new CorelDrawException("导出 PDF 失败：" + sourceFile, ex);
+                throw new CorelDrawException("导出失败：" + item.SourcePath, ex);
             }
             finally
             {
@@ -356,6 +387,230 @@ namespace CorelDRAWTool.Corel
                     {
                         Marshal.ReleaseComObject(document);
                     }
+                }
+            }
+        }
+
+        private static int GetPageCount(IVGDocument document)
+        {
+            try
+            {
+                var pages = document.Pages as IVGPages;
+                return pages != null ? pages.Count : 0;
+            }
+            catch (COMException)
+            {
+                return 0;
+            }
+        }
+
+        private static void ExportToPdf(
+            IVGDocument document,
+            BatchExportItem item,
+            BatchExportRequest request,
+            ICollection<string> outputPaths)
+        {
+            var pdfSettings = document.PDFSettings as IPDFVBASettings;
+            if (pdfSettings != null)
+            {
+                pdfSettings.PublishRange = request.PageRange == BatchExportPageRange.CurrentPage
+                    ? pdfExportRange.pdfCurrentPage
+                    : pdfExportRange.pdfWholeDocument;
+            }
+            else if (request.PageRange == BatchExportPageRange.CurrentPage)
+            {
+                throw new CorelDrawException("当前 CorelDRAW 版本不支持 PDF 当前页导出。");
+            }
+
+            if (item.OverwritesExisting && File.Exists(item.OutputPath))
+            {
+                File.Delete(item.OutputPath);
+            }
+
+            document.PublishToPDF(item.OutputPath);
+            outputPaths.Add(item.OutputPath);
+        }
+
+        private void ExportToImages(
+            IVGDocument document,
+            BatchExportItem item,
+            BatchExportRequest request,
+            ICollection<string> outputPaths,
+            ICollection<string> warnings)
+        {
+            string outputFolder = Path.GetDirectoryName(item.OutputPath);
+            if (string.IsNullOrWhiteSpace(outputFolder))
+            {
+                throw new CorelDrawException("图片输出路径无效：" + item.OutputPath);
+            }
+
+            Directory.CreateDirectory(outputFolder);
+
+            if (item.OverwritesExisting)
+            {
+                DeleteExistingImageOutputs(item.SourcePath, outputFolder, request);
+            }
+
+            cdrFilter filter = request.Format == BatchExportFormat.Png
+                ? cdrFilter.cdrPNG
+                : cdrFilter.cdrTIFF;
+
+            cdrCompressionType compression = request.Format == BatchExportFormat.Tiff
+                ? cdrCompressionType.cdrCompressionLZW
+                : cdrCompressionType.cdrCompressionNone;
+
+            if (request.PageRange == BatchExportPageRange.CurrentPage)
+            {
+                var page = document.ActivePage as IVGPage;
+                if (page == null)
+                {
+                    throw new CorelDrawException("当前文档没有活动页面。");
+                }
+
+                try
+                {
+                    ExportImagePage(document, page, item.OutputPath, filter, compression, request.ImageDpi);
+                    outputPaths.Add(item.OutputPath);
+                }
+                catch (COMException ex)
+                {
+                    throw new CorelDrawException(
+                        "导出当前页失败（页面可能为空或没有可导出内容）：" + item.SourcePath,
+                        ex);
+                }
+                finally
+                {
+                    if (Marshal.IsComObject(page))
+                    {
+                        Marshal.ReleaseComObject(page);
+                    }
+                }
+
+                return;
+            }
+
+            var pages = document.Pages as IVGPages;
+            if (pages == null)
+            {
+                throw new CorelDrawException("无法读取文档页面集合。");
+            }
+
+            for (int i = 1; i <= pages.Count; i++)
+            {
+                IVGPage page = null;
+                try
+                {
+                    page = pages[i] as IVGPage;
+                    if (page == null)
+                    {
+                        warnings.Add(string.Format("第 {0} 页不可用，已跳过。", i));
+                        continue;
+                    }
+
+                    page.Activate();
+                    string outputPath = BatchExportNaming.GetOutputPath(
+                        item.SourcePath,
+                        outputFolder,
+                        request.Format,
+                        request.PageRange,
+                        i);
+
+                    ExportImagePage(document, page, outputPath, filter, compression, request.ImageDpi);
+                    outputPaths.Add(outputPath);
+                }
+                catch (COMException ex)
+                {
+                    warnings.Add(string.Format("第 {0} 页导出失败：{1}", i, ex.Message));
+                }
+                finally
+                {
+                    if (page != null && Marshal.IsComObject(page))
+                    {
+                        Marshal.ReleaseComObject(page);
+                    }
+                }
+            }
+        }
+
+        private static void DeleteExistingImageOutputs(
+            string sourcePath,
+            string outputFolder,
+            BatchExportRequest request)
+        {
+            string pattern = BatchExportNaming.GetSearchPattern(
+                sourcePath,
+                request.Format,
+                request.PageRange);
+
+            foreach (string path in Directory.EnumerateFiles(
+                outputFolder,
+                pattern,
+                SearchOption.TopDirectoryOnly))
+            {
+                try
+                {
+                    File.Delete(path);
+                }
+                catch (IOException)
+                {
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+            }
+        }
+
+        private void ExportImagePage(
+            IVGDocument document,
+            IVGPage page,
+            string outputPath,
+            cdrFilter filter,
+            cdrCompressionType compression,
+            int imageDpi)
+        {
+            double width = page.SizeWidth;
+            double height = page.SizeHeight;
+            Rect exportArea = _application.CreateRect(0, 0, width, height);
+            StructPaletteOptions palette = _application.CreateStructPaletteOptions();
+
+            ExportFilter exportFilter = document.ExportBitmap(
+                outputPath,
+                filter,
+                cdrExportRange.cdrCurrentPage,
+                cdrImageType.cdrRGBColorImage,
+                0,
+                0,
+                imageDpi,
+                imageDpi,
+                cdrAntiAliasingType.cdrNormalAntiAliasing,
+                false,
+                false,
+                true,
+                false,
+                compression,
+                palette,
+                exportArea);
+
+            if (exportFilter == null)
+            {
+                throw new CorelDrawException("CorelDRAW 没有返回图片导出过滤器。");
+            }
+
+            try
+            {
+                var filterClass = exportFilter as ExportFilterClass;
+                if (filterClass == null)
+                {
+                    throw new CorelDrawException("无法完成图片导出：不支持的导出过滤器类型。");
+                }
+
+                filterClass.Finish();
+            }
+            finally
+            {
+                if (Marshal.IsComObject(exportFilter))
+                {
+                    Marshal.ReleaseComObject(exportFilter);
                 }
             }
         }
