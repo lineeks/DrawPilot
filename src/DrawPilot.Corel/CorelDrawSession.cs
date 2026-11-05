@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 using DrawPilot.Core.Batch;
@@ -45,6 +47,10 @@ namespace DrawPilot.Corel
                         return new CorelDrawSession(application);
                     }
                 }
+                catch (CorelDrawException)
+                {
+                    throw;
+                }
                 catch (COMException ex)
                 {
                     lastError = ex;
@@ -73,17 +79,27 @@ namespace DrawPilot.Corel
         /// </summary>
         private static IVGApplication AttachToRunningInstance()
         {
+            object registered = null;
             try
             {
-                var registered = Marshal.GetActiveObject(ProgId) as IVGApplication;
-                if (registered != null)
-                {
-                    return registered;
-                }
+                registered = Marshal.GetActiveObject(ProgId);
             }
             catch (COMException)
             {
                 // 未注册到 ROT，继续尝试 COM 激活。
+            }
+
+            if (registered != null)
+            {
+                var application = registered as IVGApplication;
+                if (application != null)
+                {
+                    return application;
+                }
+
+                string version = DescribeRawComObject(registered);
+                ReleaseComObject(registered);
+                throw CreateInteropMismatchException(version);
             }
 
             if (!IsCorelDrawProcessRunning())
@@ -97,7 +113,61 @@ namespace DrawPilot.Corel
                 return null;
             }
 
-            return Activator.CreateInstance(comType) as IVGApplication;
+            object instance = Activator.CreateInstance(comType);
+            var typed = instance as IVGApplication;
+            if (typed == null)
+            {
+                string version = DescribeRawComObject(instance);
+                ReleaseComObject(instance);
+                throw CreateInteropMismatchException(version);
+            }
+
+            return typed;
+        }
+
+        private static CorelDrawException CreateInteropMismatchException(string version)
+        {
+            string suffix = string.IsNullOrWhiteSpace(version)
+                ? string.Empty
+                : "（版本 " + version + "）";
+
+            return new CorelDrawException(
+                "已找到正在运行的 CorelDRAW" + suffix +
+                "，但当前 Corel.Interop.VGCore 程序集无法与该版本通信。" +
+                "请确认版本在支持范围内（" + CorelDrawVersionPolicy.SupportedRangeLabel + "），" +
+                "或使用与该版本匹配的互操作程序集重新构建。");
+        }
+
+        private static string DescribeRawComObject(object instance)
+        {
+            if (instance == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                object version = instance.GetType().InvokeMember(
+                    "Version",
+                    BindingFlags.GetProperty,
+                    null,
+                    instance,
+                    null);
+
+                return Convert.ToString(version, CultureInfo.InvariantCulture);
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private static void ReleaseComObject(object instance)
+        {
+            if (instance != null && Marshal.IsComObject(instance))
+            {
+                Marshal.ReleaseComObject(instance);
+            }
         }
 
         private static bool IsCorelDrawProcessRunning()

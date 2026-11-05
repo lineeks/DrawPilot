@@ -21,6 +21,7 @@ if (Test-Path $gmsPath) {
 
 $app = New-Object -ComObject CorelDRAW.Application
 $app.InitializeVBA() | Out-Null
+Write-Host ("Building GMS with CorelDRAW {0}" -f $app.Version) -ForegroundColor Cyan
 
 $loaded = @()
 foreach ($p in $app.GMSManager.Projects) {

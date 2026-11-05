@@ -1,6 +1,6 @@
 # DrawPilot
 
-面向内部团队的 CorelDRAW 2025 效率工具。已提供文档信息面板和文件夹批量导出（PDF / PNG / TIFF），后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
+面向内部团队的 CorelDRAW 2022–2026 效率工具。已提供文档信息面板和文件夹批量导出（PDF / PNG / TIFF），后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
 
 ## 架构
 
@@ -9,7 +9,7 @@ GMS 壳 (VBA)  ──启动──►  DrawPilot.Host.exe (WPF, net48)
                               │
                               │ COM 附加（ROT / ProgID 激活）
                               ▼
-                         CorelDRAW 2025 (v26)
+                         CorelDRAW 2022–2026
 ```
 
 - **GMS 壳**：只负责菜单/按钮入口和启动 Host，不写业务逻辑。
@@ -104,6 +104,6 @@ powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 ## 环境要求
 
 - Windows 10/11 64 位
-- CorelDRAW Technical Suite 2025（v26）
+- CorelDRAW 2022–2026（本机验证于 2025 / v26）
 - .NET Framework 4.8.1
 - 构建：Visual Studio 2022 或 .NET SDK（首次还原需要 NuGet）

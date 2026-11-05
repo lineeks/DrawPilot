@@ -2,7 +2,7 @@
 
 ## 目标
 
-面向内部团队的 CorelDRAW 2025 效率工具。已覆盖文档信息与文件夹批量导出（PDF/PNG/TIFF），后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
+面向内部团队的 CorelDRAW 2022–2026 效率工具。已覆盖文档信息与文件夹批量导出（PDF/PNG/TIFF），后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
 
 ## 运行时形态
 
@@ -127,7 +127,7 @@ CorelDRAW 正常启动时不会把 `Application` 注册到 ROT，`Marshal.GetAct
 
 ## 已知限制
 
-- 只验证了 CorelDRAW 2025（v26）；跨版本需要重新确认 ProgID、互操作版本和 API 差异。
+- 支持范围按 CorelDRAW 2022–2026 设计，但只实测了 2025（v26）；旧版本用 `scripts\compat-report.ps1` 排查互操作与 API 差异。
 - 浮窗不能像原生 Docker 一样停靠在 CorelDRAW 窗口内部。
 - GMS 自动构建依赖 CorelDRAW 正在运行且 VBA 项目对象模型可访问；手工导入作为兜底。
 - PDF 使用 CorelDRAW 默认 PDF 设置，暂未提供压缩、字体嵌入等预设；PDF 的“当前页”指文档副本的当前页（通常第 1 页）。

@@ -4,7 +4,7 @@
     <Deterministic>true</Deterministic>
     <Version>0.1.0</Version>
 
-    <!-- CorelDRAW 2025 (v26). Override with -p:CorelDrawDir=... or the CORELDRAW_DIR environment variable. -->
+    <!-- CorelDRAW 2025 (v26) fallback. scripts\build.ps1 detects installed versions and picks the lowest one; override with -p:CorelDrawDir=... or the CORELDRAW_DIR environment variable. -->
     <CorelDrawVersion>26</CorelDrawVersion>
     <CorelDrawDir Condition="'$(CorelDrawDir)' == '' and '$(CORELDRAW_DIR)' != ''">$(CORELDRAW_DIR)</CorelDrawDir>
     <CorelDrawDir Condition="'$(CorelDrawDir)' == ''">C:\Program Files\Corel\CorelDRAW Technical Suite\$(CorelDrawVersion)</CorelDrawDir>

@@ -442,6 +442,7 @@ namespace DrawPilot.Host.ViewModels
             try
             {
                 session = CorelDrawSession.Attach(AttachTimeout);
+                ReportCorelDrawVersion(session, progress);
 
                 for (int i = 0; i < plan.Items.Count; i++)
                 {
@@ -501,10 +502,41 @@ namespace DrawPilot.Host.ViewModels
             }
         }
 
+        private static void ReportCorelDrawVersion(
+            ICorelDrawSession session,
+            IProgress<BatchExportProgress> progress)
+        {
+            try
+            {
+                ApplicationSummary application = session.GetApplicationSummary();
+                progress.Report(BatchExportProgress.Info(string.Format(
+                    "CorelDRAW: {0}; 程序: {1}",
+                    application.DisplayVersion,
+                    application.ProgramPath)));
+
+                if (!CorelDrawVersionPolicy.IsSupported(application.VersionMajor))
+                {
+                    progress.Report(BatchExportProgress.Info(
+                        CorelDrawVersionPolicy.DescribeUnsupported(
+                            application.VersionMajor,
+                            application.VersionMinor)));
+                }
+            }
+            catch (Exception ex)
+            {
+                progress.Report(BatchExportProgress.Info(
+                    "读取 CorelDRAW 版本失败：" + ex.Message));
+            }
+        }
+
         private void OnProgress(BatchExportProgress progress)
         {
             switch (progress.Kind)
             {
+                case BatchExportProgressKind.Info:
+                    _log?.Write(progress.Message);
+                    break;
+
                 case BatchExportProgressKind.Started:
                     UpdateFile(progress.ItemIndex, "导出中", string.Empty);
                     _log?.Write(string.Format(

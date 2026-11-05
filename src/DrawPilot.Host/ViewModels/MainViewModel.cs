@@ -184,6 +184,13 @@ namespace DrawPilot.Host.ViewModels
                 StatusText = DocumentInfo.HasDocument
                     ? "文档信息已刷新。"
                     : "CorelDRAW 已连接，但当前没有打开的文档。";
+
+                if (!CorelDrawVersionPolicy.IsSupported(ApplicationInfo.VersionMajor))
+                {
+                    StatusText = CorelDrawVersionPolicy.DescribeUnsupported(
+                        ApplicationInfo.VersionMajor,
+                        ApplicationInfo.VersionMinor) + " " + StatusText;
+                }
             }
             catch (Exception ex)
             {

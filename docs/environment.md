@@ -19,6 +19,18 @@
 | 开发工具 | Visual Studio 2022 Community；.NET SDK 8 / 10 |
 | 解决方案目标框架 | `net48` |
 
+## 支持范围
+
+| CorelDRAW | 主版本 | 状态 |
+|---|---|---|
+| 2022 | 24 | 未实测 |
+| 2023 | 24.5 | 未实测 |
+| 2024 | 25 | 未实测（本机只有残留用户目录，程序未安装） |
+| 2025 | 26 | 已实测 |
+| 2026 | 27 | 未实测 |
+
+构建和部署按“2022 及以上”设计；运行时低于主版本 24 只提示，不阻断。旧版本问题用 `scripts\compat-report.ps1` 收集信息。
+
 ## 说明
 
 - CorelDRAW 的 `Programs64\Addons` 目录中是 Corel 自家的 native addon，`.addon` 文件是零字节标记文件；没有找到公开的第三方 addon SDK，因此本项目不采用 native addon。
@@ -30,7 +42,7 @@
 ## 已验证
 
 - `dotnet build DrawPilot.sln -c Release`：通过（0 警告 / 0 错误）。
-- `dotnet test`：32 个单元测试通过（批量计划、命名、设置、文档模型、功能清单）。
+- `dotnet test`：40 个单元测试通过（批量计划、命名、设置、文档模型、功能清单、版本策略）。
 - `scripts\smoke-test.ps1`：只读验证通过，能读取 CorelDRAW 版本、活动文档、页面、图层和选中对象数量。
 - `scripts\integration-test.ps1`：适配层 `CorelDrawSession.Attach` 成功附加并读取相同信息。
 - `scripts\adapter-batch-test.ps1`：PNG/TIFF 两页逐页导出、PDF 全部页/当前页、空页 warning 均通过；PDF 页数经 `pdfinfo` 验证为 2 / 1。
@@ -38,6 +50,7 @@
 - `scripts\e2e-test.ps1` / `scripts\e2e-batch-test.ps1`：GMS 宏 → Host → COM 端到端通过，分别打开文档信息和批量导出视图。
 - `scripts\ui-batch-test.ps1`：UI Automation 驱动 PDF 批量导出通过，并验证 `settings.json` 与 `data\logs` 日志。
 - `scripts\ui-batch-images-test.ps1`：通过设置加载 PNG，驱动 UI 导出两页 PNG 通过。
+- `scripts\build.ps1` / `scripts\deploy.ps1 -WhatIf`：能自动识别已安装的 2025，并把 2024 残留用户目录标记为 orphan 跳过。
 - 关键发现：正常启动的 CorelDRAW 不在 ROT 中，`GetActiveObject` 返回 `MK_E_UNAVAILABLE`；ProgID COM 激活会转发到已运行实例，不会新开进程。适配层采用“ROT 优先 + COM 激活回退”。
 - 关键发现：自动化脚本访问 `GMSManager.Projects` 前需调用 `Application.InitializeVBA()`；否则可能得到 `Projects.Count=0` 并在 `Load` 时返回 `RPC_E_SERVERFAULT`。COM 集合用 `Item(i)` 索引遍历，PowerShell `foreach` 不可靠。
 

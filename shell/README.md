@@ -18,10 +18,10 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 - 通过 VBE 的 Save 命令保存到 `shell\build\DrawPilot.gms`；
 - 卸载工程。
 
-`deploy.ps1` 会把 GMS 复制到用户 GMS 目录，并把 Host 复制到 GMS 同目录的 `DrawPilot\app`：
+`deploy.ps1` 会把 GMS 复制到本机每个已安装版本的用户 GMS 目录，并把 Host 复制到 GMS 同目录的 `DrawPilot\app`：
 
-`%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\DrawPilot.gms`
-`%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\DrawPilot\app\DrawPilot.Host.exe`
+`%APPDATA%\Corel\<产品名>\Draw\GMS\DrawPilot.gms`
+`%APPDATA%\Corel\<产品名>\Draw\GMS\DrawPilot\app\DrawPilot.Host.exe`
 
 宏会从自身 GMS 路径推导 Host 位置，因此不要单独移动 Host。
 
@@ -31,6 +31,13 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 - `DrawPilotShell.ShowBatchExport`：打开 Host，直接进入批量导出。
 
 > 如果 CorelDRAW 中已经加载了同名的 `DrawPilot` GMS 且有未保存修改，`build-shell.ps1` 会拒绝覆盖。请先在 VBA 编辑器中保存或关闭。
+
+## 多版本
+
+- `build-shell.ps1` 用**当前正在运行**的 CorelDRAW 生成 GMS，并打印使用的版本。
+- `deploy.ps1` 默认把同一份 GMS 和 Host 部署到本机所有已安装版本的 GMS 目录。
+- 如果某个旧版本无法加载这份 GMS，先启动该版本，运行 `build-shell.ps1`，再用 `deploy.ps1 -GmsRoot <该版本 GMS 目录>` 只部署到它。
+- 用 `scripts\compat-report.ps1` 查看已安装版本、残留用户目录和关键 API 探测结果。
 
 ## 手工兜底
 

@@ -10,7 +10,8 @@ namespace DrawPilot.Host.ViewModels
         Failed,
         Completed,
         Canceled,
-        Fatal
+        Fatal,
+        Info
     }
 
     public sealed class BatchExportProgress
@@ -138,6 +139,19 @@ namespace DrawPilot.Host.ViewModels
                 -1,
                 completedCount,
                 total,
+                null,
+                message,
+                null,
+                null);
+        }
+
+        public static BatchExportProgress Info(string message)
+        {
+            return new BatchExportProgress(
+                BatchExportProgressKind.Info,
+                -1,
+                0,
+                0,
                 null,
                 message,
                 null,

@@ -2,15 +2,16 @@
 
 ## 一句话
 
-CorelDRAW 2025 内部效率工具：极薄的 VBA/GMS 入口 + 进程外 .NET Framework 4.8 WPF Host，通过 COM 操作当前正在运行的 CorelDRAW。
+CorelDRAW 2022–2026 效率工具：极薄的 VBA/GMS 入口 + 进程外 .NET Framework 4.8 WPF Host，通过 COM 操作当前正在运行的 CorelDRAW。
 
 ## 当前状态
 
-- 解决方案骨架已建立，Release 构建通过，32 个单元测试通过。
+- 解决方案骨架已建立，Release 构建通过，40 个单元测试通过。
 - COM 附加已在本机验证（2026-11-04）：能附加到正常启动的 CorelDRAW 并读取活动文档信息。
 - GMS 宏 → Host → COM 端到端链路已通过（`scripts\e2e-test.ps1`、`scripts\e2e-batch-test.ps1`）。
-- 已实现：GMS 启动器源码与自动构建、COM 附加层、文档信息视图、文件夹批量导出（PDF/PNG/TIFF、全部页/当前页、DPI）、批量日志与设置持久化、部署与验证脚本。
-- 未实现：GMS 菜单/工具栏自动注册、其他批量能力（转换/重命名/预检）、印前/绘图/面板功能、全局异常处理、跨版本兼容。
+- 已实现：GMS 启动器源码与自动构建、COM 附加层、文档信息视图、文件夹批量导出（PDF/PNG/TIFF、全部页/当前页/DPI）、批量日志与设置持久化、部署与验证脚本、多版本检测与部署。
+- 未实现：GMS 菜单/工具栏自动注册、其他批量能力（转换/重命名/预检）、印前/绘图/面板功能、全局异常处理。
+- 多版本：构建/部署脚本自动检测已安装的 CorelDRAW；代码按 2022+ 设计，但仅 2025（v26）实测，2022–2024、2026 未实测。
 
 ## 环境（本机，2026-11-04 确认）
 
@@ -62,20 +63,21 @@ powershell -ExecutionPolicy Bypass -File scripts\e2e-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\e2e-batch-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-batch-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
+powershell -ExecutionPolicy Bypass -File scripts\compat-report.ps1
 ```
 
 - `build-shell.ps1` 需要 CorelDRAW 正在运行；它用 `GMSManager` + VBE 生成 `shell\build\DrawPilot.gms`，宏路径为 `DrawPilotShell.ShowMain` 和 `DrawPilotShell.ShowBatchExport`。
-- `deploy.ps1 -BuildShell` 可先构建 GMS 再部署。
+- `deploy.ps1 -BuildShell` 可先构建 GMS 再部署；默认部署到所有已安装版本，`-WhatIf` 只预览目标，`-GmsRoot` 只部署到指定 GMS 目录。无匹配安装的残留用户目录（例如已卸载的 2024）会被跳过并给出警告。
 - `e2e-test.ps1` / `e2e-batch-test.ps1` 会加载已部署的 GMS、运行对应宏、启动 Host 并用 UI Automation 验证窗口，然后关闭 Host。
 - `adapter-batch-test.ps1` 验证 PNG/TIFF/PDF 页面范围/空页告警；`ui-batch-test.ps1` 验证 PDF UI 流程；`ui-batch-images-test.ps1` 通过设置加载 PNG 并验证逐页输出。
 - 自动化脚本访问 `GMSManager.Projects` 前先调用 `Application.InitializeVBA()`；COM 集合用 `Item(i)` 索引遍历，不要依赖 PowerShell `foreach`（GMSProjects/GMSMacros 的枚举不可靠）。
 
 - 目标框架：`net48`（WPF Host 使用 `net48` + `UseWPF`）。
-- 通过 `Directory.Build.props` 的 `CorelDrawDir` 定位互操作程序集；可用 `-p:CorelDrawDir=...` 或 `CORELDRAW_DIR` 覆盖。
-- 部署路径：Host 到 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\DrawPilot\app`；GMS 到同一 GMS 目录。GMS 宏从自身路径定位 Host。
+- 通过 `Directory.Build.props` 的 `CorelDrawDir` 定位互操作程序集；`scripts\build.ps1` 会扫描 `C:\Program Files\Corel` 和注册表，自动取已安装版本中**最低**的一个作为引用，也可用 `-p:CorelDrawDir=...` 或 `CORELDRAW_DIR` 覆盖。
+- 部署路径：Host 到 `%APPDATA%\Corel\<产品名>\Draw\GMS\DrawPilot\app`；GMS 到同一 GMS 目录。GMS 宏从自身路径定位 Host。`deploy.ps1` 会为每个已安装版本各部署一份。
 - Host 的 `data` 目录（`...\GMS\DrawPilot\data`）存放 `settings.json` 和 `logs\batch-*.log`；`deploy.ps1` 只替换 `app`，不会删除 `data`。
 - **不要**把 Host 部署到 `%LOCALAPPDATA%\DrawPilot`：Claude Code 桌面会话的 sandbox 会重定向该路径，CorelDRAW 进程看不到。
-- `scripts/smoke-test.ps1` 做只读 COM 验证，不修改文档。
+- `scripts/smoke-test.ps1` 做只读 COM 验证，不修改文档；`scripts/compat-report.ps1` 输出已安装版本、GMS 目录、附加结果和关键 API 探测，用于旧版本排障。
 
 ## 约定
 
@@ -89,7 +91,7 @@ powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 
 ## 已知限制
 
-- 仅验证 CorelDRAW 2025（v26）。
+- 支持范围按 CorelDRAW 2022–2026 设计，但仅 2025（v26）实测；2022–2024、2026 的互操作绑定和 GMS 跨版本加载未验证。
 - 浮窗不是原生 Docker，不能停靠在 CorelDRAW 窗口内部。
 - GMS 自动构建依赖 CorelDRAW 正在运行且 VBA 项目对象模型可访问；手工导入作为兜底，见 `shell/README.md`。
 - PDF 使用 CorelDRAW 默认 PDF 设置，暂未提供页面压缩、字体嵌入等预设；PDF 的“当前页”指文档副本的当前页（通常第 1 页）。
@@ -100,7 +102,8 @@ powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 
 ## 下一步（建议顺序）
 
-1. 批量转换 / 重命名 / 预检，或 PDF 预设（压缩、字体嵌入）与图片 CMYK/透明选项。
-2. 自动注册 GMS 菜单/工具栏按钮（当前需从“工具 > 宏”手动运行，或由用户自行分配快捷键）。
-3. 增加全局异常处理与 Host 崩溃日志。
-4. 视需要扩展印前/绘图/面板功能。
+1. 在测试机/虚拟机上验证 2022–2024、2026：逐版本跑 `compat-report.ps1` + 一次 PNG/PDF 导出。
+2. 批量转换 / 重命名 / 预检，或 PDF 预设（压缩、字体嵌入）与图片 CMYK/透明选项。
+3. 自动注册 GMS 菜单/工具栏按钮（当前需从“工具 > 宏”手动运行，或由用户自行分配快捷键）。
+4. 增加全局异常处理与 Host 崩溃日志。
+5. 视需要扩展印前/绘图/面板功能。
