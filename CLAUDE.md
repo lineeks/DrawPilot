@@ -9,7 +9,7 @@ CorelDRAW 2022–2026 效率工具：极薄的 VBA/GMS 入口 + 进程外 .NET F
 - 解决方案骨架已建立，Release 构建通过，40 个单元测试通过。
 - COM 附加已在本机验证（2026-11-04）：能附加到正常启动的 CorelDRAW 并读取活动文档信息。
 - GMS 宏 → Host → COM 端到端链路已通过（`scripts\e2e-test.ps1`、`scripts\e2e-batch-test.ps1`）。
-- 已实现：GMS 启动器源码与自动构建、COM 附加层、文档信息视图、文件夹批量导出（PDF/PNG/TIFF、全部页/当前页/DPI）、批量日志与设置持久化、部署与验证脚本、多版本检测与部署。
+- 已实现：GMS 启动器源码与自动构建、COM 附加层、文档信息视图、文件夹批量导出（PDF/PNG/TIFF、全部页/当前页/DPI）、批量日志与设置持久化、部署与验证脚本、多版本检测与部署、Inno Setup 安装包。
 - 未实现：GMS 菜单/工具栏自动注册、其他批量能力（转换/重命名/预检）、印前/绘图/面板功能、全局异常处理。
 - 多版本：构建/部署脚本自动检测已安装的 CorelDRAW；代码按 2022+ 设计，但仅 2025（v26）实测，2022–2024、2026 未实测。
 
@@ -56,6 +56,7 @@ dotnet test DrawPilot.sln -c Release
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 powershell -ExecutionPolicy Bypass -File scripts\build-shell.ps1
 powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
+powershell -ExecutionPolicy Bypass -File scripts\build-installer.ps1 -BuildShell
 powershell -ExecutionPolicy Bypass -File scripts\integration-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\adapter-batch-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-smoke-test.ps1
@@ -68,6 +69,7 @@ powershell -ExecutionPolicy Bypass -File scripts\compat-report.ps1
 
 - `build-shell.ps1` 需要 CorelDRAW 正在运行；它用 `GMSManager` + VBE 生成 `shell\build\DrawPilot.gms`，宏路径为 `DrawPilotShell.ShowMain` 和 `DrawPilotShell.ShowBatchExport`。
 - `deploy.ps1 -BuildShell` 可先构建 GMS 再部署；默认部署到所有已安装版本，`-WhatIf` 只预览目标，`-GmsRoot` 只部署到指定 GMS 目录。无匹配安装的残留用户目录（例如已卸载的 2024）会被跳过并给出警告。
+- `build-installer.ps1` 需要 Inno Setup 6（构建机），生成 `dist\DrawPilot-Setup-<版本>.exe`；每用户安装、无需管理员，安装到 `%APPDATA%\DrawPilot` 后再复制到各版本 GMS 目录；卸载保留 `data`，脚本和语言文件在 `installer\`。
 - `e2e-test.ps1` / `e2e-batch-test.ps1` 会加载已部署的 GMS、运行对应宏、启动 Host 并用 UI Automation 验证窗口，然后关闭 Host。
 - `adapter-batch-test.ps1` 验证 PNG/TIFF/PDF 页面范围/空页告警；`ui-batch-test.ps1` 验证 PDF UI 流程；`ui-batch-images-test.ps1` 通过设置加载 PNG 并验证逐页输出。
 - 自动化脚本访问 `GMSManager.Projects` 前先调用 `Application.InitializeVBA()`；COM 集合用 `Item(i)` 索引遍历，不要依赖 PowerShell `foreach`（GMSProjects/GMSMacros 的枚举不可靠）。
@@ -92,6 +94,7 @@ powershell -ExecutionPolicy Bypass -File scripts\compat-report.ps1
 ## 已知限制
 
 - 支持范围按 CorelDRAW 2022–2026 设计，但仅 2025（v26）实测；2022–2024、2026 的互操作绑定和 GMS 跨版本加载未验证。
+- 安装包未做代码签名，首次运行可能出现 SmartScreen 提示；安装器不会自动注册菜单/工具栏按钮。
 - 浮窗不是原生 Docker，不能停靠在 CorelDRAW 窗口内部。
 - GMS 自动构建依赖 CorelDRAW 正在运行且 VBA 项目对象模型可访问；手工导入作为兜底，见 `shell/README.md`。
 - PDF 使用 CorelDRAW 默认 PDF 设置，暂未提供页面压缩、字体嵌入等预设；PDF 的“当前页”指文档副本的当前页（通常第 1 页）。

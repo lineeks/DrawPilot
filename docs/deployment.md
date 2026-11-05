@@ -87,6 +87,38 @@ powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1 -BuildShell
 
 如果自动构建失败（例如 VBA 项目对象模型被限制），按 `shell\README.md` 的手工步骤导入 `.bas` 并保存为 GMS。
 
+## 制作安装包
+
+构建机需要 Inno Setup 6：
+
+```powershell
+winget install JRSoftware.InnoSetup
+```
+
+生成安装包：
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\build-installer.ps1 -BuildShell
+```
+
+输出 `dist\DrawPilot-Setup-<版本>.exe`。安装包行为：
+
+- 每用户安装（`PrivilegesRequired=lowest`），不需要管理员权限；
+- 通过注册表检测本机所有已安装的 CorelDRAW 2022+，逐个部署 `DrawPilot.gms` 和 `DrawPilot\app`；
+- 跳过没有对应安装的残留用户目录（例如已卸载的 2024）；
+- 先安装到 `%APPDATA%\DrawPilot`，再复制到各版本 GMS 目录；
+- 升级覆盖 `app` 和 GMS，保留 `data`；
+- 卸载删除 GMS 和 `app`，保留 `data`；
+- 不注册菜单/工具栏按钮，安装后仍需手动运行宏或自行绑定快捷键。
+- 以后新装了 CorelDRAW 版本，重新运行安装包即可补部署到新版本。
+
+静默安装与卸载（用于自动化验证）：
+
+```powershell
+Start-Process -Wait "dist\DrawPilot-Setup-0.1.0.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
+Start-Process -Wait "$env:APPDATA\DrawPilot\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART"
+```
+
 ## 运行
 
 ### 文档信息
@@ -164,6 +196,7 @@ powershell -ExecutionPolicy Bypass -File scripts\e2e-batch-test.ps1
 | `已找到正在运行的 CorelDRAW（版本 X），但当前 Corel.Interop.VGCore 程序集无法与该版本通信` | 互操作程序集与运行版本不匹配。用 `-GmsRoot` 只部署到该版本，或在对应版本运行时重新构建 GMS；同时把 `compat-report.ps1` 的输出发给维护者。 |
 | `当前 CorelDRAW 版本为 X，低于支持范围` | 版本低于 2022；升级 CorelDRAW，或接受部分功能可能不可用。 |
 | 构建时报找不到 `Corel.Interop.VGCore.dll` | 修改 `CorelDrawDir`（`-p:` 或环境变量 `CORELDRAW_DIR`）。 |
+| `build-installer.ps1` 报找不到 `ISCC.exe` | 安装 Inno Setup 6：`winget install JRSoftware.InnoSetup`。 |
 | `deploy.ps1` 提示文件被占用 | 先关闭正在运行的 Host，再部署。 |
 | GMS 中找不到宏 | 检查 GMS 是否在用户 GMS 目录，重启 CorelDRAW；确认工程已保存。 |
 | 插入测试矩形失败 | 当前没有打开文档、文档没有图层，或对象被锁定。 |
@@ -176,6 +209,7 @@ powershell -ExecutionPolicy Bypass -File scripts\e2e-batch-test.ps1
 
 ## 卸载
 
-- 删除 `%APPDATA%\Corel\<产品名>\Draw\GMS\DrawPilot.gms`。
-- 删除 `%APPDATA%\Corel\<产品名>\Draw\GMS\DrawPilot` 目录（Host、依赖、设置和日志）。
-- 不涉及注册表。
+- 通过 Windows“设置 > 应用”卸载 DrawPilot，或运行 `%APPDATA%\DrawPilot\unins000.exe`。
+- 卸载会删除各版本 GMS 目录下的 `DrawPilot.gms` 和 `DrawPilot\app`，保留 `DrawPilot\data`。
+- 需要彻底清理时，再手动删除各版本 GMS 目录下的 `DrawPilot` 文件夹。
+- 不需要管理员权限；卸载时会删除 `HKCU\Software\DrawPilot`。
