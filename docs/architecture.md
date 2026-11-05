@@ -11,7 +11,7 @@ CorelDRAW (64-bit)
    │
    │  用户点击宏 / 工具栏按钮
    ▼
-GMS 壳（VBA，极薄）── Shell 启动 ──► CorelDRAWTool.Host.exe（WPF, net48）
+GMS 壳（VBA，极薄）── Shell 启动 ──► DrawPilot.Host.exe（WPF, net48）
                                           │
                                           │ COM 附加（ROT / ProgID 激活）
                                           ▼
@@ -28,11 +28,11 @@ GMS 壳只做一件事：找到并启动 Host，传入命令 ID。业务逻辑�
 
 | 项目 | 目标框架 | 职责 | 禁止 |
 |---|---|---|---|
-| `CorelDRAWTool.Core` | net48 | 纯业务模型、功能清单、批量计划/命名/设置 | 引用 Corel 互操作类型 |
-| `CorelDRAWTool.Corel` | net48 | 唯一 COM 适配层；附加、读取文档、批量导出 PDF/PNG/TIFF | 依赖 WPF |
-| `CorelDRAWTool.Host` | net48 / WPF | UI、命令编排、文档信息、批量 STA 执行、日志/设置 | 直接引用 `Corel.Interop.VGCore` |
-| `CorelDRAWTool.Shell` | VBA | 菜单/按钮入口、启动 Host | 承载业务逻辑 |
-| `tests/CorelDRAWTool.Core.Tests` | net48 | 核心逻辑、计划器、命名、设置单元测试 | 依赖 CorelDRAW |
+| `DrawPilot.Core` | net48 | 纯业务模型、功能清单、批量计划/命名/设置 | 引用 Corel 互操作类型 |
+| `DrawPilot.Corel` | net48 | 唯一 COM 适配层；附加、读取文档、批量导出 PDF/PNG/TIFF | 依赖 WPF |
+| `DrawPilot.Host` | net48 / WPF | UI、命令编排、文档信息、批量 STA 执行、日志/设置 | 直接引用 `Corel.Interop.VGCore` |
+| `DrawPilot.Shell` | VBA | 菜单/按钮入口、启动 Host | 承载业务逻辑 |
+| `tests/DrawPilot.Core.Tests` | net48 | 核心逻辑、计划器、命名、设置单元测试 | 依赖 CorelDRAW |
 
 ## 批量导出数据流
 
@@ -72,7 +72,7 @@ Progress<BatchExportProgress> ──► UI 逐文件状态 / 进度条 / 汇总
 3. **GMS 壳自动构建。**
    - `.gms` 是带 VBA 工程的二进制容器；`scripts\build-shell.ps1` 通过 `GMSManager.Projects.Create` 创建工程，用 VBE 导入 `.bas`，再执行 VBE 的 Save 命令（Id=3）保存，最后卸载工程。
    - 自动构建要求 CorelDRAW 正在运行且 VBA 项目对象模型可访问；手工导入作为兜底（见 `shell\README.md`）。
-   - 模块名是 `CorelDRAWToolShell`，宏路径为 `CorelDRAWToolShell.ShowCorelDRAWTool` 和 `CorelDRAWToolShell.ShowBatchExport`。
+   - 模块名是 `DrawPilotShell`，宏路径为 `DrawPilotShell.ShowMain` 和 `DrawPilotShell.ShowBatchExport`。
 
 4. **浮动窗口，而不是 CDR 内部 Docker。**
    - 第三方要做真正的停靠面板，需要 Corel 的 native addon 接口，目前没有公开 SDK。
@@ -91,12 +91,12 @@ CorelDRAW 正常启动时不会把 `Application` 注册到 ROT，`Marshal.GetAct
 
 ```
 %APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\
-├─ CorelDRAWTool.gms
-└─ CorelDRAWTool\
+├─ DrawPilot.gms
+└─ DrawPilot\
    ├─ app\
-   │  ├─ CorelDRAWTool.Host.exe
-   │  ├─ CorelDRAWTool.Core.dll
-   │  ├─ CorelDRAWTool.Corel.dll
+   │  ├─ DrawPilot.Host.exe
+   │  ├─ DrawPilot.Core.dll
+   │  ├─ DrawPilot.Corel.dll
    │  ├─ Corel.Interop.VGCore.dll
    │  └─ ...
    └─ data\
@@ -104,15 +104,15 @@ CorelDRAW 正常启动时不会把 `Application` 注册到 ROT，`Marshal.GetAct
       └─ logs\batch-*.log
 ```
 
-`deploy.ps1` 只替换 `app` 目录，`data`（设置和日志）会保留。GMS 宏通过 `Application.GMSManager.Projects("CorelDRAWTool").FullFileName` 取自身路径，再定位同目录的 Host。不要使用 `%LOCALAPPDATA%\CorelDRAWTool`：Claude Code 桌面会话的 sandbox 会把该路径重定向到 `Packages\Claude_...\LocalCache`，CorelDRAW 进程不可见。
+`deploy.ps1` 只替换 `app` 目录，`data`（设置和日志）会保留。GMS 宏通过 `Application.GMSManager.Projects("DrawPilot").FullFileName` 取自身路径，再定位同目录的 Host。不要使用 `%LOCALAPPDATA%\DrawPilot`：Claude Code 桌面会话的 sandbox 会把该路径重定向到 `Packages\Claude_...\LocalCache`，CorelDRAW 进程不可见。
 
 ## 扩展方式
 
 新增一个功能时：
 
 1. 在 `FeatureCatalog` 登记 `FeatureDescriptor`，把 `isAvailable` 设为 `true`（或先登记为 `false` 占位）。
-2. 纯逻辑放在 `CorelDRAWTool.Core`，补单元测试。
-3. 需要 CorelDRAW 的操作在 `CorelDRAWTool.Corel` 增加方法，并保持接口 `ICorelDrawSession` 为边界。
+2. 纯逻辑放在 `DrawPilot.Core`，补单元测试。
+3. 需要 CorelDRAW 的操作在 `DrawPilot.Corel` 增加方法，并保持接口 `ICorelDrawSession` 为边界。
 4. 在 Host 增加对应视图/命令；`MainViewModel` 按选中的功能 ID 切换内容。
 5. 如果功能需要独立入口，GMS 壳可新增一个宏并传不同的 `--command=`。
 

@@ -1,13 +1,13 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$output = Join-Path $root "src\CorelDRAWTool.Host\bin\Release\net48"
-$hostExe = Join-Path $output "CorelDRAWTool.Host.exe"
+$output = Join-Path $root "src\DrawPilot.Host\bin\Release\net48"
+$hostExe = Join-Path $output "DrawPilot.Host.exe"
 $dataDir = Join-Path (Split-Path $output -Parent) "data"
 $settingsPath = Join-Path $dataDir "settings.json"
 $logDir = Join-Path $dataDir "logs"
-$inputDir = Join-Path $env:TEMP "CorelDRAWTool-batch-ui\input"
-$pdfDir = Join-Path $env:TEMP "CorelDRAWTool-batch-ui\output"
+$inputDir = Join-Path $env:TEMP "DrawPilot-batch-ui\input"
+$pdfDir = Join-Path $env:TEMP "DrawPilot-batch-ui\output"
 $sample = Join-Path $inputDir "Sample.cdr"
 $pdf = Join-Path $pdfDir "Sample.pdf"
 
@@ -160,7 +160,7 @@ try {
     }
 
     $logText = Get-Content $newLogs[0].FullName -Raw -Encoding UTF8
-    if ($logText -notmatch "CorelDRAWTool") {
+    if ($logText -notmatch "DrawPilot") {
         throw "Batch log does not contain the expected header."
     }
 

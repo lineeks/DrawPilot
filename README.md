@@ -1,11 +1,11 @@
-# CorelDRAWTool
+# DrawPilot
 
 面向内部团队的 CorelDRAW 2025 效率工具。已提供文档信息面板和文件夹批量导出（PDF / PNG / TIFF），后续在同一骨架上扩展批量处理、印前/制版、绘图/排版、面板/对象管理能力。
 
 ## 架构
 
 ```
-GMS 壳 (VBA)  ──启动──►  CorelDRAWTool.Host.exe (WPF, net48)
+GMS 壳 (VBA)  ──启动──►  DrawPilot.Host.exe (WPF, net48)
                               │
                               │ COM 附加（ROT / ProgID 激活）
                               ▼
@@ -23,12 +23,12 @@ GMS 壳 (VBA)  ──启动──►  CorelDRAWTool.Host.exe (WPF, net48)
 
 ```
 src/
-  CorelDRAWTool.Core/    纯业务模型、功能清单
-  CorelDRAWTool.Corel/   CorelDRAW COM 适配层
-  CorelDRAWTool.Host/    WPF 桌面程序
+  DrawPilot.Core/    纯业务模型、功能清单
+  DrawPilot.Corel/   CorelDRAW COM 适配层
+  DrawPilot.Host/    WPF 桌面程序
 shell/vba/                VBA/GMS 入口源码
 tests/
-  CorelDRAWTool.Core.Tests/
+  DrawPilot.Core.Tests/
 scripts/                 构建、部署、冒烟/集成/端到端测试
 docs/                    架构、环境、部署文档
 ```
@@ -36,16 +36,16 @@ docs/                    架构、环境、部署文档
 ## 快速开始
 
 ```powershell
-dotnet build CorelDRAWTool.sln -c Release
-dotnet test CorelDRAWTool.sln -c Release
+dotnet build DrawPilot.sln -c Release
+dotnet test DrawPilot.sln -c Release
 powershell -ExecutionPolicy Bypass -File scripts\build-shell.ps1
 powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
 ```
 
 然后按 `shell\README.md` 安装 GMS 壳，在 CorelDRAW 中运行：
 
-- `CorelDRAWToolShell.ShowCorelDRAWTool`：打开 Host，默认显示文档信息；
-- `CorelDRAWToolShell.ShowBatchExport`：打开 Host，直接进入批量导出。
+- `DrawPilotShell.ShowMain`：打开 Host，默认显示文档信息；
+- `DrawPilotShell.ShowBatchExport`：打开 Host，直接进入批量导出。
 
 ## 批量导出
 

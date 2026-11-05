@@ -29,12 +29,12 @@
 
 ## 已验证
 
-- `dotnet build CorelDRAWTool.sln -c Release`：通过（0 警告 / 0 错误）。
+- `dotnet build DrawPilot.sln -c Release`：通过（0 警告 / 0 错误）。
 - `dotnet test`：32 个单元测试通过（批量计划、命名、设置、文档模型、功能清单）。
 - `scripts\smoke-test.ps1`：只读验证通过，能读取 CorelDRAW 版本、活动文档、页面、图层和选中对象数量。
 - `scripts\integration-test.ps1`：适配层 `CorelDrawSession.Attach` 成功附加并读取相同信息。
 - `scripts\adapter-batch-test.ps1`：PNG/TIFF 两页逐页导出、PDF 全部页/当前页、空页 warning 均通过；PDF 页数经 `pdfinfo` 验证为 2 / 1。
-- `scripts\build-shell.ps1`：自动生成 `shell\build\CorelDRAWTool.gms`，宏路径为 `CorelDRAWToolShell.ShowCorelDRAWTool` 和 `CorelDRAWToolShell.ShowBatchExport`。
+- `scripts\build-shell.ps1`：自动生成 `shell\build\DrawPilot.gms`，宏路径为 `DrawPilotShell.ShowMain` 和 `DrawPilotShell.ShowBatchExport`。
 - `scripts\e2e-test.ps1` / `scripts\e2e-batch-test.ps1`：GMS 宏 → Host → COM 端到端通过，分别打开文档信息和批量导出视图。
 - `scripts\ui-batch-test.ps1`：UI Automation 驱动 PDF 批量导出通过，并验证 `settings.json` 与 `data\logs` 日志。
 - `scripts\ui-batch-images-test.ps1`：通过设置加载 PNG，驱动 UI 导出两页 PNG 通过。
@@ -43,11 +43,11 @@
 
 ## 部署路径与 sandbox
 
-- Claude Code 桌面会话的 Bash 沙箱会把新创建的 `%LOCALAPPDATA%\CorelDRAWTool` 重定向到 `...\Packages\Claude_...\LocalCache\...`；CorelDRAW 进程看不到这个重定向目录。
+- Claude Code 桌面会话的 Bash 沙箱会把新创建的 `%LOCALAPPDATA%\DrawPilot` 重定向到 `...\Packages\Claude_...\LocalCache\...`；CorelDRAW 进程看不到这个重定向目录。
 - 因此 Host 部署在 CorelDRAW 用户 GMS 目录下：
-  `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool\app`
+  `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\DrawPilot\app`
 - Host 的设置和日志在同级 `data` 目录：`settings.json`、`logs\batch-*.log`；部署脚本只替换 `app`，保留 `data`。
-- GMS 宏通过 `Application.GMSManager.Projects("CorelDRAWTool").FullFileName` 取自身路径，再定位同目录的 Host。不要改回 `%LOCALAPPDATA%`。
+- GMS 宏通过 `Application.GMSManager.Projects("DrawPilot").FullFileName` 取自身路径，再定位同目录的 Host。不要改回 `%LOCALAPPDATA%`。
 
 ## 脚本编码
 

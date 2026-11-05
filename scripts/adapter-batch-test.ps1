@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$output = Join-Path $root "src\CorelDRAWTool.Corel\bin\Release\net48"
-$tempRoot = Join-Path $env:TEMP "CorelDRAWTool-adapter-test"
+$output = Join-Path $root "src\DrawPilot.Corel\bin\Release\net48"
+$tempRoot = Join-Path $env:TEMP "DrawPilot-adapter-test"
 $inputDir = Join-Path $tempRoot "input"
 $outRoot = Join-Path $tempRoot "output"
 $sample4 = Join-Path $inputDir "Sample4.cdr"
@@ -44,8 +44,8 @@ if (-not (Test-Path $sampleBlank)) {
     New-TwoPageSample -Path $sampleBlank -BlankFirstPage $true
 }
 
-$coreDll = Join-Path $output "CorelDRAWTool.Core.dll"
-$corelDll = Join-Path $output "CorelDRAWTool.Corel.dll"
+$coreDll = Join-Path $output "DrawPilot.Core.dll"
+$corelDll = Join-Path $output "DrawPilot.Corel.dll"
 $interopDll = Join-Path $output "Corel.Interop.VGCore.dll"
 
 if (-not (Test-Path $coreDll)) {
@@ -56,14 +56,14 @@ if (-not (Test-Path $coreDll)) {
 [Reflection.Assembly]::LoadFrom($coreDll) | Out-Null
 [Reflection.Assembly]::LoadFrom($corelDll) | Out-Null
 
-$session = [CorelDRAWTool.Corel.CorelDrawSession]::Attach([TimeSpan]::FromSeconds(5))
+$session = [DrawPilot.Corel.CorelDrawSession]::Attach([TimeSpan]::FromSeconds(5))
 
 function Test-Export {
     param(
         [string]$Name,
         [string]$Source,
-        [CorelDRAWTool.Core.Models.BatchExportFormat]$Format,
-        [CorelDRAWTool.Core.Models.BatchExportPageRange]$PageRange,
+        [DrawPilot.Core.Models.BatchExportFormat]$Format,
+        [DrawPilot.Core.Models.BatchExportPageRange]$PageRange,
         [int]$Dpi,
         [string]$OutputFileName
     )
@@ -72,7 +72,7 @@ function Test-Export {
     New-Item -ItemType Directory -Path $outDir -Force | Out-Null
     Get-ChildItem $outDir -File -ErrorAction SilentlyContinue | Remove-Item -Force
 
-    $request = New-Object -TypeName CorelDRAWTool.Core.Models.BatchExportRequest -ArgumentList @(
+    $request = New-Object -TypeName DrawPilot.Core.Models.BatchExportRequest -ArgumentList @(
         (Split-Path $Source -Parent),
         $outDir,
         $Format,
@@ -81,7 +81,7 @@ function Test-Export {
         $false
     )
 
-    $item = New-Object -TypeName CorelDRAWTool.Core.Models.BatchExportItem -ArgumentList @(
+    $item = New-Object -TypeName DrawPilot.Core.Models.BatchExportItem -ArgumentList @(
         $Source,
         (Join-Path $outDir $OutputFileName),
         $false
@@ -98,11 +98,11 @@ function Test-Export {
 }
 
 try {
-    Test-Export -Name "png-all" -Source $sample4 -Format ([CorelDRAWTool.Core.Models.BatchExportFormat]::Png) -PageRange ([CorelDRAWTool.Core.Models.BatchExportPageRange]::AllPages) -Dpi 150 -OutputFileName "Sample4-p01.png"
-    Test-Export -Name "tiff-all" -Source $sample4 -Format ([CorelDRAWTool.Core.Models.BatchExportFormat]::Tiff) -PageRange ([CorelDRAWTool.Core.Models.BatchExportPageRange]::AllPages) -Dpi 150 -OutputFileName "Sample4-p01.tif"
-    Test-Export -Name "pdf-all" -Source $sample4 -Format ([CorelDRAWTool.Core.Models.BatchExportFormat]::Pdf) -PageRange ([CorelDRAWTool.Core.Models.BatchExportPageRange]::AllPages) -Dpi 300 -OutputFileName "Sample4.pdf"
-    Test-Export -Name "pdf-current" -Source $sample4 -Format ([CorelDRAWTool.Core.Models.BatchExportFormat]::Pdf) -PageRange ([CorelDRAWTool.Core.Models.BatchExportPageRange]::CurrentPage) -Dpi 300 -OutputFileName "Sample4-current.pdf"
-    Test-Export -Name "png-blank-page" -Source $sampleBlank -Format ([CorelDRAWTool.Core.Models.BatchExportFormat]::Png) -PageRange ([CorelDRAWTool.Core.Models.BatchExportPageRange]::AllPages) -Dpi 150 -OutputFileName "SampleBlank-p01.png"
+    Test-Export -Name "png-all" -Source $sample4 -Format ([DrawPilot.Core.Models.BatchExportFormat]::Png) -PageRange ([DrawPilot.Core.Models.BatchExportPageRange]::AllPages) -Dpi 150 -OutputFileName "Sample4-p01.png"
+    Test-Export -Name "tiff-all" -Source $sample4 -Format ([DrawPilot.Core.Models.BatchExportFormat]::Tiff) -PageRange ([DrawPilot.Core.Models.BatchExportPageRange]::AllPages) -Dpi 150 -OutputFileName "Sample4-p01.tif"
+    Test-Export -Name "pdf-all" -Source $sample4 -Format ([DrawPilot.Core.Models.BatchExportFormat]::Pdf) -PageRange ([DrawPilot.Core.Models.BatchExportPageRange]::AllPages) -Dpi 300 -OutputFileName "Sample4.pdf"
+    Test-Export -Name "pdf-current" -Source $sample4 -Format ([DrawPilot.Core.Models.BatchExportFormat]::Pdf) -PageRange ([DrawPilot.Core.Models.BatchExportPageRange]::CurrentPage) -Dpi 300 -OutputFileName "Sample4-current.pdf"
+    Test-Export -Name "png-blank-page" -Source $sampleBlank -Format ([DrawPilot.Core.Models.BatchExportFormat]::Png) -PageRange ([DrawPilot.Core.Models.BatchExportPageRange]::AllPages) -Dpi 150 -OutputFileName "SampleBlank-p01.png"
 }
 finally {
     $session.Dispose()

@@ -1,12 +1,12 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$output = Join-Path $root "src\CorelDRAWTool.Host\bin\Release\net48"
-$hostExe = Join-Path $output "CorelDRAWTool.Host.exe"
+$output = Join-Path $root "src\DrawPilot.Host\bin\Release\net48"
+$hostExe = Join-Path $output "DrawPilot.Host.exe"
 $dataDir = Join-Path (Split-Path $output -Parent) "data"
 $settingsPath = Join-Path $dataDir "settings.json"
-$inputDir = Join-Path $env:TEMP "CorelDRAWTool-batch-ui\input-png"
-$pngDir = Join-Path $env:TEMP "CorelDRAWTool-batch-ui\output-png"
+$inputDir = Join-Path $env:TEMP "DrawPilot-batch-ui\input-png"
+$pngDir = Join-Path $env:TEMP "DrawPilot-batch-ui\output-png"
 $sample = Join-Path $inputDir "Sample4.cdr"
 
 if (-not (Get-Process CorelDRW -ErrorAction SilentlyContinue)) {
@@ -40,17 +40,17 @@ if (Test-Path $settingsPath) {
     Remove-Item $settingsPath -Force
 }
 
-$coreDll = Join-Path $output "CorelDRAWTool.Core.dll"
+$coreDll = Join-Path $output "DrawPilot.Core.dll"
 [Reflection.Assembly]::LoadFrom($coreDll) | Out-Null
 
-$settings = New-Object -TypeName CorelDRAWTool.Core.Settings.BatchExportSettings
+$settings = New-Object -TypeName DrawPilot.Core.Settings.BatchExportSettings
 $settings.InputFolder = $inputDir
 $settings.OutputFolder = $pngDir
-$settings.Format = [CorelDRAWTool.Core.Models.BatchExportFormat]::Png
-$settings.PageRange = [CorelDRAWTool.Core.Models.BatchExportPageRange]::AllPages
+$settings.Format = [DrawPilot.Core.Models.BatchExportFormat]::Png
+$settings.PageRange = [DrawPilot.Core.Models.BatchExportPageRange]::AllPages
 $settings.ImageDpi = 150
 $settings.OverwriteExisting = $false
-[CorelDRAWTool.Core.Settings.BatchExportSettingsStore]::Save($settingsPath, $settings)
+[DrawPilot.Core.Settings.BatchExportSettingsStore]::Save($settingsPath, $settings)
 
 Add-Type -AssemblyName UIAutomationClient
 Add-Type -AssemblyName UIAutomationTypes

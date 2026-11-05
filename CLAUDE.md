@@ -1,4 +1,4 @@
-# CorelDRAWTool — 项目说明（给后续会话）
+# DrawPilot — 项目说明（给后续会话）
 
 ## 一句话
 
@@ -26,9 +26,9 @@ CorelDRAW 2025 内部效率工具：极薄的 VBA/GMS 入口 + 进程外 .NET Fr
 
 ## 架构边界（必须遵守）
 
-- `src/CorelDRAWTool.Core`：纯业务模型与算法，**不得**引用 Corel 互操作。
-- `src/CorelDRAWTool.Corel`：**唯一**允许使用 `Corel.Interop.VGCore` 的项目，暴露 `ICorelDrawSession`。
-- `src/CorelDRAWTool.Host`：WPF UI 与功能编排，只通过 `ICorelDrawSession` 访问 CorelDRAW，**不得**直接引用互操作类型。
+- `src/DrawPilot.Core`：纯业务模型与算法，**不得**引用 Corel 互操作。
+- `src/DrawPilot.Corel`：**唯一**允许使用 `Corel.Interop.VGCore` 的项目，暴露 `ICorelDrawSession`。
+- `src/DrawPilot.Host`：WPF UI 与功能编排，只通过 `ICorelDrawSession` 访问 CorelDRAW，**不得**直接引用互操作类型。
 - `shell/vba`：只负责启动 Host，**不得**写业务逻辑。
 - 新增功能先登记到 `Core/Features/FeatureCatalog.cs`，再在 Core 写逻辑、Corel 加适配方法、Host 加视图。
 
@@ -50,8 +50,8 @@ CorelDRAW 2025 内部效率工具：极薄的 VBA/GMS 入口 + 进程外 .NET Fr
 ## 构建 / 测试 / 部署
 
 ```powershell
-dotnet build CorelDRAWTool.sln -c Release
-dotnet test CorelDRAWTool.sln -c Release
+dotnet build DrawPilot.sln -c Release
+dotnet test DrawPilot.sln -c Release
 powershell -ExecutionPolicy Bypass -File scripts\build.ps1
 powershell -ExecutionPolicy Bypass -File scripts\build-shell.ps1
 powershell -ExecutionPolicy Bypass -File scripts\deploy.ps1
@@ -64,7 +64,7 @@ powershell -ExecutionPolicy Bypass -File scripts\ui-batch-test.ps1
 powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 ```
 
-- `build-shell.ps1` 需要 CorelDRAW 正在运行；它用 `GMSManager` + VBE 生成 `shell\build\CorelDRAWTool.gms`，宏路径为 `CorelDRAWToolShell.ShowCorelDRAWTool` 和 `CorelDRAWToolShell.ShowBatchExport`。
+- `build-shell.ps1` 需要 CorelDRAW 正在运行；它用 `GMSManager` + VBE 生成 `shell\build\DrawPilot.gms`，宏路径为 `DrawPilotShell.ShowMain` 和 `DrawPilotShell.ShowBatchExport`。
 - `deploy.ps1 -BuildShell` 可先构建 GMS 再部署。
 - `e2e-test.ps1` / `e2e-batch-test.ps1` 会加载已部署的 GMS、运行对应宏、启动 Host 并用 UI Automation 验证窗口，然后关闭 Host。
 - `adapter-batch-test.ps1` 验证 PNG/TIFF/PDF 页面范围/空页告警；`ui-batch-test.ps1` 验证 PDF UI 流程；`ui-batch-images-test.ps1` 通过设置加载 PNG 并验证逐页输出。
@@ -72,9 +72,9 @@ powershell -ExecutionPolicy Bypass -File scripts\ui-batch-images-test.ps1
 
 - 目标框架：`net48`（WPF Host 使用 `net48` + `UseWPF`）。
 - 通过 `Directory.Build.props` 的 `CorelDrawDir` 定位互操作程序集；可用 `-p:CorelDrawDir=...` 或 `CORELDRAW_DIR` 覆盖。
-- 部署路径：Host 到 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\CorelDRAWTool\app`；GMS 到同一 GMS 目录。GMS 宏从自身路径定位 Host。
-- Host 的 `data` 目录（`...\GMS\CorelDRAWTool\data`）存放 `settings.json` 和 `logs\batch-*.log`；`deploy.ps1` 只替换 `app`，不会删除 `data`。
-- **不要**把 Host 部署到 `%LOCALAPPDATA%\CorelDRAWTool`：Claude Code 桌面会话的 sandbox 会重定向该路径，CorelDRAW 进程看不到。
+- 部署路径：Host 到 `%APPDATA%\Corel\CorelDRAW Technical Suite 2025\Draw\GMS\DrawPilot\app`；GMS 到同一 GMS 目录。GMS 宏从自身路径定位 Host。
+- Host 的 `data` 目录（`...\GMS\DrawPilot\data`）存放 `settings.json` 和 `logs\batch-*.log`；`deploy.ps1` 只替换 `app`，不会删除 `data`。
+- **不要**把 Host 部署到 `%LOCALAPPDATA%\DrawPilot`：Claude Code 桌面会话的 sandbox 会重定向该路径，CorelDRAW 进程看不到。
 - `scripts/smoke-test.ps1` 做只读 COM 验证，不修改文档。
 
 ## 约定

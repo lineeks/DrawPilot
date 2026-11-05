@@ -1,10 +1,10 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$basPath = Join-Path $root "shell\vba\CorelDRAWTool.bas"
+$basPath = Join-Path $root "shell\vba\DrawPilot.bas"
 $buildDir = Join-Path $root "shell\build"
-$gmsPath = Join-Path $buildDir "CorelDRAWTool.gms"
-$projectName = "CorelDRAWTool"
+$gmsPath = Join-Path $buildDir "DrawPilot.gms"
+$projectName = "DrawPilot"
 
 if (-not (Get-Process CorelDRW -ErrorAction SilentlyContinue)) {
     throw "CorelDRAW must be running to build the GMS."

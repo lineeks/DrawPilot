@@ -7,11 +7,11 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$hostOutput = Join-Path $root "src\CorelDRAWTool.Host\bin\$Configuration\net48"
-$gmsSource = Join-Path $root "shell\build\CorelDRAWTool.gms"
+$hostOutput = Join-Path $root "src\DrawPilot.Host\bin\$Configuration\net48"
+$gmsSource = Join-Path $root "shell\build\DrawPilot.gms"
 $gmsTargetDir = Join-Path $env:APPDATA "Corel\CorelDRAW Technical Suite 2025\Draw\GMS"
-$gmsTarget = Join-Path $gmsTargetDir "CorelDRAWTool.gms"
-$installDir = Join-Path $gmsTargetDir "CorelDRAWTool\app"
+$gmsTarget = Join-Path $gmsTargetDir "DrawPilot.gms"
+$installDir = Join-Path $gmsTargetDir "DrawPilot\app"
 
 & (Join-Path $PSScriptRoot "build.ps1") -Configuration $Configuration
 
@@ -19,7 +19,7 @@ if ($BuildShell) {
     & (Join-Path $PSScriptRoot "build-shell.ps1")
 }
 
-$hostExe = Join-Path $hostOutput "CorelDRAWTool.Host.exe"
+$hostExe = Join-Path $hostOutput "DrawPilot.Host.exe"
 if (-not (Test-Path $hostExe)) {
     throw "Host build output not found: $hostExe"
 }

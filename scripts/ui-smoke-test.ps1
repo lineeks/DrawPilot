@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$output = Join-Path $root "src\CorelDRAWTool.Host\bin\Release\net48"
-$hostExe = Join-Path $output "CorelDRAWTool.Host.exe"
+$output = Join-Path $root "src\DrawPilot.Host\bin\Release\net48"
+$hostExe = Join-Path $output "DrawPilot.Host.exe"
 
 if (-not (Get-Process CorelDRW -ErrorAction SilentlyContinue)) {
     Write-Host "CorelDRAW is not running." -ForegroundColor Yellow
@@ -13,11 +13,11 @@ if (-not (Test-Path $hostExe)) {
     throw "Host not built: $hostExe. Run scripts\build.ps1 first."
 }
 
-foreach ($name in @("Corel.Interop.VGCore.dll", "CorelDRAWTool.Core.dll", "CorelDRAWTool.Corel.dll")) {
+foreach ($name in @("Corel.Interop.VGCore.dll", "DrawPilot.Core.dll", "DrawPilot.Corel.dll")) {
     [Reflection.Assembly]::LoadFrom((Join-Path $output $name)) | Out-Null
 }
 
-$session = [CorelDRAWTool.Corel.CorelDrawSession]::Attach([TimeSpan]::FromSeconds(5))
+$session = [DrawPilot.Corel.CorelDrawSession]::Attach([TimeSpan]::FromSeconds(5))
 try {
     $expectedDoc = $session.GetActiveDocumentSummary()
 }
@@ -60,9 +60,9 @@ try {
         }
     }
 
-    $expectedTitle = [CorelDRAWTool.Core.Features.FeatureCatalog]::Default.Title
+    $expectedTitle = [DrawPilot.Core.Features.FeatureCatalog]::Default.Title
     $checks = @(
-        @{ Name = "window title"; Ok = ($window.Current.Name -eq "CorelDRAWTool") },
+        @{ Name = "window title"; Ok = ($window.Current.Name -eq "DrawPilot") },
         @{ Name = "feature title"; Ok = $names.Contains($expectedTitle) },
         @{ Name = "page count"; Ok = $names.Contains($expectedDoc.PageCount.ToString()) },
         @{ Name = "layer count"; Ok = $names.Contains($expectedDoc.LayerCount.ToString()) },

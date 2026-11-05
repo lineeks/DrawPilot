@@ -1,8 +1,8 @@
 $ErrorActionPreference = "Stop"
 
 $gmsDir = Join-Path $env:APPDATA "Corel\CorelDRAW Technical Suite 2025\Draw\GMS"
-$gmsPath = Join-Path $gmsDir "CorelDRAWTool.gms"
-$appDir = Join-Path $gmsDir "CorelDRAWTool\app"
+$gmsPath = Join-Path $gmsDir "DrawPilot.gms"
+$appDir = Join-Path $gmsDir "DrawPilot\app"
 
 if (-not (Get-Process CorelDRW -ErrorAction SilentlyContinue)) {
     throw "CorelDRAW is not running."
@@ -12,7 +12,7 @@ if (-not (Test-Path $gmsPath)) {
     throw "GMS not deployed: $gmsPath"
 }
 
-[Reflection.Assembly]::LoadFrom((Join-Path $appDir "CorelDRAWTool.Core.dll")) | Out-Null
+[Reflection.Assembly]::LoadFrom((Join-Path $appDir "DrawPilot.Core.dll")) | Out-Null
 
 $app = New-Object -ComObject CorelDRAW.Application
 $app.InitializeVBA() | Out-Null
@@ -21,7 +21,7 @@ $project = $null
 $projects = $app.GMSManager.Projects
 for ($i = 1; $i -le $projects.Count; $i++) {
     $candidate = $projects.Item($i)
-    if ($candidate.Name -eq "CorelDRAWTool") {
+    if ($candidate.Name -eq "DrawPilot") {
         $project = $candidate
     }
 }
@@ -33,22 +33,22 @@ if ($null -eq $project) {
 $macro = $null
 for ($i = 1; $i -le $project.Macros.Count; $i++) {
     $candidate = $project.Macros.Item($i)
-    if ($candidate.Name -like "*ShowCorelDRAWTool") {
+    if ($candidate.Name -like "*ShowMain") {
         $macro = $candidate
     }
 }
 
 if ($null -eq $macro) {
-    throw "Macro ShowCorelDRAWTool was not found in the GMS."
+    throw "Macro ShowMain was not found in the GMS."
 }
 
-$before = @(Get-Process CorelDRAWTool.Host -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+$before = @(Get-Process DrawPilot.Host -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
 $macro.Run()
 
 $hostProcess = $null
 for ($i = 0; $i -lt 30 -and $null -eq $hostProcess; $i++) {
     Start-Sleep -Milliseconds 500
-    $candidates = @(Get-Process CorelDRAWTool.Host -ErrorAction SilentlyContinue |
+    $candidates = @(Get-Process DrawPilot.Host -ErrorAction SilentlyContinue |
         Where-Object { $before -notcontains $_.Id })
     if ($candidates.Count -gt 0) {
         $hostProcess = $candidates[0]
@@ -92,7 +92,7 @@ foreach ($element in $elements) {
     }
 }
 
-$expectedTitle = [CorelDRAWTool.Core.Features.FeatureCatalog]::Default.Title
+$expectedTitle = [DrawPilot.Core.Features.FeatureCatalog]::Default.Title
 if (-not $names.Contains($expectedTitle)) {
     throw "UI did not show the document info feature."
 }

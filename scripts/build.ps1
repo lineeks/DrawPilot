@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 $root = Split-Path -Parent $PSScriptRoot
-$solution = Join-Path $root "CorelDRAWTool.sln"
+$solution = Join-Path $root "DrawPilot.sln"
 
 Write-Host "Building $solution ($Configuration)..." -ForegroundColor Cyan
 dotnet build $solution -c $Configuration

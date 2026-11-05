@@ -1,14 +1,14 @@
 $ErrorActionPreference = "Stop"
 
 $root = Split-Path -Parent $PSScriptRoot
-$output = Join-Path $root "src\CorelDRAWTool.Host\bin\Release\net48"
+$output = Join-Path $root "src\DrawPilot.Host\bin\Release\net48"
 
 if (-not (Get-Process CorelDRW -ErrorAction SilentlyContinue)) {
     Write-Host "CorelDRAW is not running." -ForegroundColor Yellow
     exit 1
 }
 
-foreach ($name in @("Corel.Interop.VGCore.dll", "CorelDRAWTool.Core.dll", "CorelDRAWTool.Corel.dll")) {
+foreach ($name in @("Corel.Interop.VGCore.dll", "DrawPilot.Core.dll", "DrawPilot.Corel.dll")) {
     $path = Join-Path $output $name
     if (-not (Test-Path $path)) {
         throw "Missing build output: $path. Run scripts\build.ps1 first."
@@ -16,7 +16,7 @@ foreach ($name in @("Corel.Interop.VGCore.dll", "CorelDRAWTool.Core.dll", "Corel
     [Reflection.Assembly]::LoadFrom($path) | Out-Null
 }
 
-$session = [CorelDRAWTool.Corel.CorelDrawSession]::Attach([TimeSpan]::FromSeconds(5))
+$session = [DrawPilot.Corel.CorelDrawSession]::Attach([TimeSpan]::FromSeconds(5))
 try {
     $app = $session.GetApplicationSummary()
     $doc = $session.GetActiveDocumentSummary()
